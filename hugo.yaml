@@ -1,0 +1,47 @@
+baseURL: "https://daniel-dataflow.github.io/"
+languageCode: "ko-kr"
+title: "Daniel Tech Log"
+theme: "PaperMod"
+
+paginate: 10
+
+params:
+  env: production
+  title: "Daniel Tech Log"
+  description: "PickSafe 아키텍처 및 기술 의사결정 기록"
+  author: "Daniel"
+  
+  # 메인 화면 프로필 모드 세팅
+  profileMode:
+    enabled: true
+    title: "Daniel Tech Log"
+    subtitle: "서비스 개발 고뇌와 아키텍처 의사결정 아카이브"
+    imageUrl: ""
+    imageTitle: ""
+    buttons:
+      - name: PickSafe 개발로그
+        url: "/posts/picksafe/"
+      - name: 전체 글 보기
+        url: "/posts/"
+
+  # 상단 메뉴바 구성
+  menu:
+    main:
+      - identifier: posts
+        name: Posts
+        url: /posts/
+        weight: 10
+      - identifier: picksafe
+        name: PickSafe
+        url: /posts/picksafe/
+        weight: 20
+      - identifier: search
+        name: Search
+        url: /search/
+        weight: 30
+
+  # 테마 기본 설정
+  ShowReadingTime: true
+  ShowShareButtons: false
+  ShowCodeCopyButtons: true
+  defaultTheme: auto
