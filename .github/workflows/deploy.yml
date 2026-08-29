@@ -1,0 +1,52 @@
+name: Deploy Hugo site to Pages
+
+on:
+  push:
+    branches:
+      - main # main 브랜치에 글이 푸시되면 자동 빌드 실행
+  workflow_dispatch: # Actions 탭에서 수동 실행 버튼 허용
+
+# GitHub Pages 배포를 위한 기본 권한 설정
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive # 서브모듈(테마)까지 함께 다운로드
+          fetch-depth: 0
+
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v3
+        with:
+          hugo-version: 'latest'
+          extended: true # PaperMod SCSS 빌드를 위한 extended 버전 사용
+
+      - name: Build with Hugo
+        run: hugo --minify
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./public
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
