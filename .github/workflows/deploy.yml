@@ -3,10 +3,9 @@ name: Deploy Hugo site to Pages
 on:
   push:
     branches:
-      - main # main 브랜치에 글이 푸시되면 자동 빌드 실행
-  workflow_dispatch: # Actions 탭에서 수동 실행 버튼 허용
+      - main
+  workflow_dispatch:
 
-# GitHub Pages 배포를 위한 기본 권한 설정
 permissions:
   contents: read
   pages: write
@@ -23,14 +22,19 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          submodules: recursive # 서브모듈(테마)까지 함께 다운로드
           fetch-depth: 0
 
       - name: Setup Hugo
         uses: peaceiris/actions-hugo@v3
         with:
           hugo-version: 'latest'
-          extended: true # PaperMod SCSS 빌드를 위한 extended 버전 사용
+          extended: true
+
+      # 🔥 테마가 없으면 자동으로 깃허브에서 클론해오는 단계 추가
+      - name: Download PaperMod Theme
+        run: |
+          mkdir -p themes
+          git clone --depth=1 https://github.com/adityatelange/hugo-PaperMod.git themes/PaperMod
 
       - name: Build with Hugo
         run: hugo --minify
