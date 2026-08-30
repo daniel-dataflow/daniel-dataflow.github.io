@@ -13,11 +13,11 @@
     </div>
     <p class="nb-profile-bio">{{ .Site.Params.author_bio }}</p>
     <div class="nb-profile-actions">
-      <a href="{{ .Site.Params.github_url }}" target="_blank" class="nb-btn-primary">
-        <i class="fa-brands fa-github"></i> 깃허브 팔로우
+      <a href="{{ .Site.Params.github_url }}" target="_blank" class="nb-btn-primary" title="GitHub 프로필 바로가기">
+        <i class="fa-brands fa-github"></i> GitHub
       </a>
-      <a href="mailto:{{ .Site.Params.email }}" class="nb-btn-sub">
-        <i class="fa-regular fa-envelope"></i> 문의
+      <a href="mailto:{{ .Site.Params.email }}" class="nb-btn-sub" title="이메일 문의하기">
+        <i class="fa-regular fa-envelope"></i> Email
       </a>
     </div>
     <div class="nb-profile-stats">
@@ -32,12 +32,13 @@
     </div>
   </div>
 
-  <!-- 2. 블로그 내 실시간 검색 위젯 -->
-  <div class="nb-widget nb-search-widget">
+  <!-- 2. 블로그 내 전역 실시간 검색 위젯 (자동 완성 드롭다운) -->
+  <div class="nb-widget nb-search-widget" style="position: relative;">
     <div class="nb-search-box">
       <i class="fa-solid fa-magnifying-glass"></i>
       <input type="text" id="nb-search-input" placeholder="글 제목, 내용, 태그 검색..." autocomplete="off">
     </div>
+    <div id="nb-search-results" class="nb-search-dropdown" style="display: none;"></div>
   </div>
 
   <!-- 3. 카테고리 메뉴 위젯 (전체보기 및 하위 카테고리들) -->
@@ -71,7 +72,7 @@
     <ul class="nb-recent-list">
       {{ range first 5 .Site.RegularPages }}
       <li class="nb-recent-item">
-        <a href="{{ .Permalink }}" class="nb-recent-link">
+        <a href="{{ .RelPermalink }}" class="nb-recent-link">
           <span class="nb-recent-title">{{ .Title }}</span>
           <span class="nb-recent-date">{{ .Date.Format "2006.01.02" }}</span>
         </a>
@@ -91,23 +92,6 @@
         #{{ $name }} <span class="nb-tag-count">{{ $taxonomy.Count }}</span>
       </a>
       {{ end }}
-    </div>
-  </div>
-
-  <!-- 6. 방문자 통계 위젯 -->
-  <div class="nb-widget nb-stats-widget">
-    <div class="nb-widget-header">
-      <i class="fa-solid fa-chart-line"></i> 방문자 통계
-    </div>
-    <div class="nb-visitor-counts">
-      <div class="nb-v-row">
-        <span>TODAY</span>
-        <span class="nb-v-num" id="nb-today-count">128</span>
-      </div>
-      <div class="nb-v-row">
-        <span>TOTAL</span>
-        <span class="nb-v-num" id="nb-total-count">24,590</span>
-      </div>
     </div>
   </div>
 </aside>

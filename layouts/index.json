@@ -1,0 +1,13 @@
+[
+  {{- range $i, $page := .Site.RegularPages }}
+  {{- if $i }},{{- end }}
+  {
+    "title": {{ $page.Title | jsonify }},
+    "permalink": {{ $page.RelPermalink | jsonify }},
+    "date": {{ $page.Date.Format "2006.01.02" | jsonify }},
+    "category": {{ ($page.Params.category | default "Tech") | jsonify }},
+    "tags": {{ ($page.Params.tags | default slice) | jsonify }},
+    "summary": {{ ($page.Summary | plainify | truncate 120) | jsonify }}
+  }
+  {{- end }}
+]

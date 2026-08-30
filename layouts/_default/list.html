@@ -40,7 +40,7 @@
       <article class="nb-post-item" data-title="{{ .Title }}" data-tags="{{ with .Params.tags }}{{ delimit . " " }}{{ end }}">
         <div class="nb-post-main">
           <div class="nb-post-meta-top">
-            <span class="nb-post-cat">{{ .Params.category | default (.CurrentSection.Title | default "PickSafe") }}</span>
+            <span class="nb-post-cat">{{ .Params.category | default (.CurrentSection.Title | default "Tech") }}</span>
             <span class="nb-post-date">{{ .Date.Format "2006.01.02 15:04" }}</span>
           </div>
           <h3 class="nb-post-title">
@@ -65,8 +65,7 @@
               <span class="nb-read-time"><i class="fa-regular fa-clock"></i> {{ .ReadingTime }}분 분량</span>
             </div>
             <div class="nb-post-reactions">
-              <span class="nb-reaction-item" title="공감"><i class="fa-regular fa-heart"></i> <span class="nb-like-num">1</span></span>
-              <span class="nb-reaction-item" title="댓글"><i class="fa-regular fa-comment-dots"></i> 0</span>
+              <span class="nb-read-time" style="font-size: 0.78rem; color: #94a3b8;"><i class="fa-solid fa-file-lines"></i> {{ .WordCount }}자</span>
               <a href="{{ .Permalink }}" class="nb-more-btn">본문 읽기 &rarr;</a>
             </div>
           </div>

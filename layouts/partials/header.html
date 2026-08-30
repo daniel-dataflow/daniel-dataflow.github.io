@@ -9,7 +9,13 @@
     </div>
     <nav class="nb-gnb-menu">
       {{ range .Site.Menus.main }}
-      <a href="{{ .URL }}" class="nb-menu-item {{ if or (eq $.RelPermalink .URL) (hasPrefix $.RelPermalink .URL) }}active{{ end }}">
+      {{ $isActive := false }}
+      {{ if eq .URL "/" }}
+        {{ if eq $.RelPermalink "/" }}{{ $isActive = true }}{{ end }}
+      {{ else }}
+        {{ if hasPrefix $.RelPermalink .URL }}{{ $isActive = true }}{{ end }}
+      {{ end }}
+      <a href="{{ .URL }}" class="nb-menu-item {{ if $isActive }}active{{ end }}">
         {{ .Name }}
       </a>
       {{ end }}
@@ -32,11 +38,6 @@
       <div class="nb-banner-category">{{ .Site.Params.banner_badge | default "Engineering & Architecture Archive" }}</div>
       <h1 class="nb-banner-title"><a href="/">{{ .Site.Title }}</a></h1>
       <p class="nb-banner-subtitle">{{ .Site.Params.subtitle }}</p>
-    </div>
-    <div class="nb-banner-actions">
-      <a href="{{ .Site.Params.github_url }}" target="_blank" class="nb-banner-neighbor-btn">
-        <i class="fa-solid fa-user-plus"></i> 이웃추가 / 팔로우
-      </a>
     </div>
   </div>
 </div>

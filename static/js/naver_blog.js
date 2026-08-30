@@ -1,11 +1,13 @@
 /**
  * Naver Blog Theme JavaScript - Daniel Tech Blog
- * Interactive features: URL Copy, Like Button, TOC Toggle, Code Copy, Live Search, Back to Top
+ * Interactive features: Full-Site Live Search, URL Copy, Like Button, TOC Toggle, Code Copy, Back to Top
  */
 
+let searchIndex = null;
+
 document.addEventListener('DOMContentLoaded', () => {
-  initCodeCopyButtons();
   initLiveSearch();
+  initCodeCopyButtons();
   initBackToTop();
   checkLikeState();
 });
@@ -74,12 +76,12 @@ function togglePostLike() {
   if (isLiked) {
     likeBtn.classList.add('liked');
     if (iconEl) iconEl.className = 'fa-solid fa-heart';
-    if (countEl) countEl.textContent = '2';
+    if (countEl) countEl.textContent = '1';
     showToast('❤️ 포스트에 공감했습니다!');
   } else {
     likeBtn.classList.remove('liked');
     if (iconEl) iconEl.className = 'fa-regular fa-heart';
-    if (countEl) countEl.textContent = '1';
+    if (countEl) countEl.textContent = '0';
     showToast('공감을 취소했습니다.');
   }
 }
@@ -97,7 +99,9 @@ function checkLikeState() {
   if (isLiked) {
     likeBtn.classList.add('liked');
     if (iconEl) iconEl.className = 'fa-solid fa-heart';
-    if (countEl) countEl.textContent = '2';
+    if (countEl) countEl.textContent = '1';
+  } else {
+    if (countEl) countEl.textContent = '0';
   }
 }
 
@@ -139,21 +143,79 @@ function initCodeCopyButtons() {
   });
 }
 
-// 6. Live Search in Sidebar
-function initLiveSearch() {
+// 6. Full-Site Live Search with Dropdown
+async function initLiveSearch() {
   const searchInput = document.getElementById('nb-search-input');
-  if (!searchInput) return;
+  const resultsContainer = document.getElementById('nb-search-results');
+  if (!searchInput || !resultsContainer) return;
+
+  try {
+    const res = await fetch('/index.json');
+    if (res.ok) {
+      searchIndex = await res.json();
+    }
+  } catch (e) {
+    console.warn('Search index load error:', e);
+  }
 
   searchInput.addEventListener('input', (e) => {
     const query = e.target.value.toLowerCase().trim();
-    const postItems = document.querySelectorAll('.nb-post-item, .nb-recent-item');
-    if (!postItems.length) return;
+    if (!query) {
+      resultsContainer.style.display = 'none';
+      resultsContainer.innerHTML = '';
+      return;
+    }
 
-    postItems.forEach(item => {
-      const text = item.innerText.toLowerCase();
-      item.style.display = (!query || text.includes(query)) ? 'block' : 'none';
+    if (!searchIndex) {
+      resultsContainer.innerHTML = '<div class="nb-search-empty">검색 인덱스를 불러오는 중입니다...</div>';
+      resultsContainer.style.display = 'block';
+      return;
+    }
+
+    const matches = searchIndex.filter(post => {
+      const t = (post.title || '').toLowerCase();
+      const c = (post.category || '').toLowerCase();
+      const s = (post.summary || '').toLowerCase();
+      const tags = (post.tags || []).join(' ').toLowerCase();
+      return t.includes(query) || c.includes(query) || s.includes(query) || tags.includes(query);
     });
+
+    if (matches.length === 0) {
+      resultsContainer.innerHTML = `<div class="nb-search-empty">🔍 <b>"${escapeHtml(query)}"</b>에 대한 검색 결과가 없습니다.</div>`;
+    } else {
+      resultsContainer.innerHTML = `
+        <div class="nb-search-header">검색 결과 (${matches.length}건)</div>
+        <div class="nb-search-items">
+          ${matches.slice(0, 8).map(item => `
+            <a href="${item.permalink}" class="nb-search-item">
+              <div class="nb-search-item-cat">${escapeHtml(item.category)}</div>
+              <div class="nb-search-item-title">${escapeHtml(item.title)}</div>
+              <div class="nb-search-item-summary">${escapeHtml(item.summary)}</div>
+              <div class="nb-search-item-date">${escapeHtml(item.date)}</div>
+            </a>
+          `).join('')}
+        </div>
+      `;
+    }
+    resultsContainer.style.display = 'block';
   });
+
+  document.addEventListener('click', (e) => {
+    if (!searchInput.contains(e.target) && !resultsContainer.contains(e.target)) {
+      resultsContainer.style.display = 'none';
+    }
+  });
+
+  searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      resultsContainer.style.display = 'none';
+    }
+  });
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 // 7. Back to Top

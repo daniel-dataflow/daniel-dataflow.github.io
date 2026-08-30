@@ -5,6 +5,12 @@ title: "Daniel Tech Blog"
 pagination:
   pagerSize: 8
 
+outputs:
+  home:
+    - HTML
+    - RSS
+    - JSON
+
 taxonomies:
   category: categories
   categories: categories
@@ -32,7 +38,6 @@ params:
     show_recent_posts: true
     show_tags: true
     show_search: true
-    show_stats: true
 
   # 포스트 설정
   ShowReadingTime: true
@@ -43,22 +48,18 @@ params:
   ShowWordCount: true
   ShowToc: true
 
-# 상단 GNB 메뉴바
+# 상단 GNB 메뉴바 (카테고리 전체보기로 단일화하여 모든 카테고리 균등 대우)
 menu:
   main:
     - identifier: home
       name: "홈"
       url: /
       weight: 10
-    - identifier: picksafe
-      name: "PickSafe"
-      url: /posts/picksafe/
-      weight: 20
     - identifier: categories
       name: "카테고리"
       url: /categories/
-      weight: 30
+      weight: 20
     - identifier: tags
       name: "태그 모음"
       url: /tags/
-      weight: 40
+      weight: 30
