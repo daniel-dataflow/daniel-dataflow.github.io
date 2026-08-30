@@ -31,10 +31,10 @@ jobs:
           extended: true
 
       # 🔥 테마가 없으면 자동으로 깃허브에서 클론해오는 단계 추가
-      - name: Download PaperMod Theme
+      - name: Download Blowfish Theme
         run: |
           mkdir -p themes
-          git clone --depth=1 https://github.com/adityatelange/hugo-PaperMod.git themes/PaperMod
+          git clone --depth=1 https://github.com/nunocoracao/blowfish.git themes/blowfish
 
       - name: Build with Hugo
         run: hugo --minify
