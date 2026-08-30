@@ -14,7 +14,7 @@ taxonomies:
 params:
   env: production
   title: "Daniel Tech Blog"
-  subtitle: "PickSafe 아키텍처 및 백엔드 엔지니어링 아카이브"
+  subtitle: "아키텍처 및 백엔드 엔지니어링 아카이브"
   description: "고성능 백엔드 아키텍처, 시스템 최적화, 그리고 실전 엔지니어링 문제 해결 기록소"
   author: "Daniel"
   author_role: "Backend & Systems Architect"
