@@ -867,3 +867,12 @@ body {
   padding: 4px 10px;
   border-radius: 14px;
 }
+
+.nb-preview-content hr, hr {
+  border: 0 !important;
+  height: 1px !important;
+  background: #e2e8f0 !important;
+  margin: 32px 0 !important;
+  clear: both !important;
+  display: block !important;
+}

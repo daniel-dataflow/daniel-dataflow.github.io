@@ -919,7 +919,7 @@ ${notes}
   }
 }
 
-// ─── 10. Robust Markdown & Frontmatter Live Preview ───
+// ─── 10. Robust Markdown & SmartEditor Live Preview ───
 let previewTimer = null;
 function handleEditorChange() {
   isEditorDirty = true;
@@ -974,6 +974,10 @@ function renderLivePreview() {
   if (!category) {
     category = document.getElementById('postCategorySelect')?.value || 'PickSafe';
   }
+
+  // 2. Preprocess body: Convert dashes (---) directly under text into explicit divider <hr>
+  // Prevents standard Markdown from accidentally converting previous lines into an H2 Setext heading!
+  body = body.replace(/([^\n\r])\r?\n(\s*[-*_]{3,}\s*)(\r?\n|$)/g, '$1\n\n$2\n\n');
 
   if (typeof marked !== 'undefined') {
     marked.setOptions({
