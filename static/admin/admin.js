@@ -1021,49 +1021,73 @@ async function generateAiDraftWithGemini() {
     finalPrompt += `\n\n[원본 개발 노트 및 요청사항]:\n${combinedSource}\n`;
   }
 
+  const btn = document.getElementById('btnAiGenerate');
+  const origText = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 작성 중...';
+  }
+
   // Candidate fallback list: chosenModel first, then alternatives
-  const candidateModels = [chosenModel, 'gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.1-flash-lite']
+  const candidateModels = [chosenModel, 'gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite']
     .filter((m, idx, arr) => m && arr.indexOf(m) === idx);
 
   let success = false;
   let lastErrorMsg = '';
 
-  for (const modelToTry of candidateModels) {
-    try {
-      statusEl.textContent = `🤖 ${modelToTry} 모델로 글 작성 중...`;
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelToTry}:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: finalPrompt }] }]
-        })
-      });
+  try {
+    for (const modelToTry of candidateModels) {
+      statusEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> <b>${modelToTry}</b> 모델로 글 작성 중... (약 3~5초 소요)`;
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 45000);
 
-      if (res.status === 200) {
-        const data = await res.json();
-        const draft = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        document.getElementById('markdownEditor').value = draft;
-        handleEditorChange();
-        closeAiDraftModal();
-        alert(`✨ [${modelToTry}] 모델 기반 AI 재구성이 성공적으로 완료되었습니다! 에디터에서 확인해 보세요.`);
-        success = true;
-        break;
-      } else {
-        const err = await res.json();
-        lastErrorMsg = err.error?.message || res.statusText;
-        console.warn(`Model ${modelToTry} failed:`, lastErrorMsg);
-        // Continue to fallback model if 404 / 400 (model not found / deprecated)
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelToTry}:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: finalPrompt }] }]
+          }),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        if (res.status === 200) {
+          const data = await res.json();
+          const parts = data.candidates?.[0]?.content?.parts || [];
+          const draft = parts.map(p => p.text || '').join('').trim();
+
+          if (draft) {
+            document.getElementById('markdownEditor').value = draft;
+            handleEditorChange();
+            closeAiDraftModal();
+            alert(`✨ [${modelToTry}] 모델 기반 AI 재구성이 성공적으로 완료되었습니다!`);
+            success = true;
+            break;
+          } else {
+            console.warn(`Model ${modelToTry} returned empty text parts.`);
+          }
+        } else {
+          const err = await res.json().catch(() => ({}));
+          lastErrorMsg = err.error?.message || res.statusText;
+          console.warn(`Model ${modelToTry} failed (${res.status}):`, lastErrorMsg);
+        }
+      } catch (e) {
+        lastErrorMsg = e.message;
+        console.warn(`Model ${modelToTry} network error:`, e);
       }
-    } catch (e) {
-      lastErrorMsg = e.message;
     }
-  }
 
-  if (!success) {
-    alert(`AI 생성 실패: ${lastErrorMsg}\n\n모든 추천 모델(3.5 Flash, 3.5 Flash-Lite, 3.6 Flash) 호출을 시도했으나 실패했습니다. API Key 권한을 확인해 주세요.`);
+    if (!success) {
+      alert(`AI 생성 실패: ${lastErrorMsg}\n\n모델 호출 중 오류가 발생했습니다. API Key와 네트워크 상태를 확인해 주세요.`);
+    }
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origText;
+    }
+    statusEl.textContent = '';
   }
-
-  statusEl.textContent = '';
 }
 
 // ─── 10. Pixel-Perfect 100% Identical Naver Blog Live Preview ───
