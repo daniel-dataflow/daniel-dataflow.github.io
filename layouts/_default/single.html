@@ -1,50 +1,57 @@
 {{ define "main" }}
-<div class="nb-content-card nb-single-card">
-  <!-- 포스트 상단 카테고리 경로 (Breadcrumb) -->
+<div class="nb-content-card nb-single-article">
+  <!-- 상단 네비게이션 경로 (Breadcrumb) -->
   <div class="nb-breadcrumb">
     <a href="/"><i class="fa-solid fa-house"></i> 홈</a>
     <span class="nb-bc-sep">&gt;</span>
-    <a href="/posts/picksafe/">{{ .Params.category | default "PickSafe" }}</a>
+    <a href="/categories/">카테고리</a>
+    <span class="nb-bc-sep">&gt;</span>
+    {{ with .CurrentSection }}
+      <a href="{{ .RelPermalink }}">{{ .Title }}</a>
+    {{ else }}
+      <a href="/categories/{{ .Params.category | urlize }}/">{{ .Params.category | default "PickSafe" }}</a>
+    {{ end }}
     <span class="nb-bc-sep">&gt;</span>
     <span class="nb-bc-current">{{ .Title | truncate 30 }}</span>
   </div>
 
-  <!-- 포스트 제목 및 메타정보 -->
-  <header class="nb-single-header">
-    <div class="nb-single-cat-badge">{{ .Params.category | default "PickSafe" }}</div>
-    <h1 class="nb-single-title">{{ .Title }}</h1>
+  <!-- 포스트 메타 헤더 -->
+  <header class="nb-article-header">
+    <div class="nb-article-cat">
+      <span class="nb-cat-tag">
+        {{ with .CurrentSection }}
+          <a href="{{ .RelPermalink }}">{{ .Title }}</a>
+        {{ else }}
+          {{ .Params.category | default "PickSafe" }}
+        {{ end }}
+      </span>
+    </div>
+    <h1 class="nb-article-title">{{ .Title }}</h1>
     
-    <div class="nb-single-meta">
-      <div class="nb-single-author">
-        <img src="{{ .Site.Params.author_avatar }}" alt="Daniel" class="nb-single-avatar" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=Daniel&background=03c75a&color=fff&size=64';">
-        <div class="nb-author-text">
-          <span class="nb-author-name">{{ .Site.Params.author }}</span>
-          <span class="nb-post-date">{{ .Date.Format "2026년 01월 02일 15:04" }}</span>
+    <div class="nb-article-meta-row">
+      <div class="nb-meta-left">
+        <img src="{{ .Site.Params.author_avatar }}" alt="{{ .Site.Params.author }}" class="nb-author-avatar-img" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=Daniel&background=03c75a&color=fff&size=64';">
+        <div class="nb-meta-author-text">
+          <span class="nb-author-name-bold">{{ .Site.Params.author }}</span>
+          <span class="nb-post-publish-date">{{ .Date.Format "2006년 01월 02일 15:04" }}</span>
         </div>
       </div>
-
-      <div class="nb-single-tools">
-        <!-- 글자 크기 조절 -->
-        <div class="nb-font-size-ctrl" title="본문 글자 크기 조절">
-          <button id="nb-font-dec" class="nb-tool-btn">가-</button>
-          <button id="nb-font-inc" class="nb-tool-btn">가+</button>
-        </div>
-        <!-- URL 복사 버튼 -->
-        <button id="nb-copy-url" class="nb-tool-btn copy-url" title="게시글 URL 복사">
+      <div class="nb-meta-right">
+        <button class="nb-util-btn" onclick="adjustFontSize(-1)" title="글자 작게">가-</button>
+        <button class="nb-util-btn" onclick="adjustFontSize(1)" title="글자 크게">가+</button>
+        <button class="nb-util-btn copy-url-btn" onclick="copyPostUrl()" title="URL 복사">
           <i class="fa-solid fa-link"></i> URL 복사
         </button>
       </div>
     </div>
   </header>
 
-  <div class="nb-divider"></div>
-
-  <!-- 목차 (Table of Contents) -->
-  {{ if .TableOfContents }}
+  <!-- 목차 (TOC) -->
+  {{ if and .Params.ShowToc (ne .TableOfContents "<nav id=\"TableOfContents\"></nav>") }}
   <div class="nb-toc-box">
-    <div class="nb-toc-header" id="nb-toc-toggle">
-      <span><i class="fa-solid fa-list-ol"></i> <strong>목차 (Table of Contents)</strong></span>
-      <i class="fa-solid fa-chevron-down nb-toc-arrow"></i>
+    <div class="nb-toc-header" onclick="toggleToc()">
+      <span><i class="fa-solid fa-bars-staggered"></i> 목차 (Table of Contents)</span>
+      <i class="fa-solid fa-chevron-down nb-toc-arrow" id="nb-toc-arrow"></i>
     </div>
     <div class="nb-toc-content" id="nb-toc-content">
       {{ .TableOfContents }}
@@ -52,73 +59,48 @@
   </div>
   {{ end }}
 
-  <!-- 본문 영역 (SmartEditor ONE 스타일) -->
-  <article class="nb-article-body" id="nb-article-content">
+  <!-- 본문 영역 -->
+  <div class="nb-article-body" id="nb-article-body">
     {{ .Content }}
-  </article>
+  </div>
 
-  <!-- 하단 태그 모음 -->
+  <!-- 태그 리스트 -->
   {{ if .Params.tags }}
-  <div class="nb-single-tags">
-    <span class="nb-tags-label"><i class="fa-solid fa-tags"></i> 태그:</span>
-    {{ range .Params.tags }}
-    <a href="/tags/{{ . | urlize }}/" class="nb-single-tag-badge">#{{ . }}</a>
-    {{ end }}
+  <div class="nb-article-tags-wrap">
+    <div class="nb-tag-label"><i class="fa-solid fa-tags"></i> 관련 태그</div>
+    <div class="nb-article-tags">
+      {{ range .Params.tags }}
+      <a href="/tags/{{ . | urlize }}/" class="nb-post-tag">#{{ . }}</a>
+      {{ end }}
+    </div>
   </div>
   {{ end }}
 
-  <!-- 하단 인터랙션 바 (공감 ❤️, 공유, 통계) -->
-  <div class="nb-post-action-bar">
-    <div class="nb-action-left">
-      <button class="nb-like-btn" id="nb-like-button" data-post-id="{{ .File.UniqueID | default .Permalink }}">
+  <!-- 포스트 하단 작성자 프로필 & 공감 박스 -->
+  <div class="nb-article-footer">
+    <div class="nb-like-action-box">
+      <button class="nb-like-btn" id="nb-article-like-btn" onclick="togglePostLike()">
         <i class="fa-regular fa-heart" id="nb-like-icon"></i>
-        <span class="nb-like-text">공감</span>
-        <span class="nb-like-count" id="nb-like-count">1</span>
-      </button>
-      <button class="nb-share-btn" id="nb-share-button">
-        <i class="fa-regular fa-share-from-square"></i> 공유
+        <span>이 글이 유익했다면 공감하기</span>
+        <span class="nb-like-count" id="nb-post-like-count">1</span>
       </button>
     </div>
-    <div class="nb-action-right">
-      <span class="nb-read-stat"><i class="fa-regular fa-eye"></i> 읽음 {{ .ReadingTime }}분 소요</span>
+
+    <!-- 작성자 카드 -->
+    <div class="nb-author-bottom-card">
+      <img src="{{ .Site.Params.author_avatar }}" alt="{{ .Site.Params.author }}" class="nb-bot-avatar" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=Daniel&background=03c75a&color=fff&size=96';">
+      <div class="nb-bot-info">
+        <h4>{{ .Site.Params.author }} <span class="nb-bot-role">{{ .Site.Params.author_role }}</span></h4>
+        <p>{{ .Site.Params.author_bio }}</p>
+        <div class="nb-bot-links">
+          <a href="{{ .Site.Params.github_url }}" target="_blank"><i class="fa-brands fa-github"></i> GitHub</a>
+          <a href="mailto:{{ .Site.Params.email }}"><i class="fa-regular fa-envelope"></i> Email</a>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- 네이버 블로그 시그니처: 카테고리의 다른 글 위젯 -->
+  <!-- 같은 카테고리의 다른 글 -->
   {{ partial "other_posts.html" . }}
-
-  <!-- 이전 글 / 다음 글 네비게이션 -->
-  <nav class="nb-post-nav">
-    {{ with .PrevInSection }}
-    <a href="{{ .Permalink }}" class="nb-nav-card prev">
-      <div class="nb-nav-dir"><i class="fa-solid fa-chevron-left"></i> 이전 글</div>
-      <div class="nb-nav-title">{{ .Title }}</div>
-    </a>
-    {{ else }}
-    <div class="nb-nav-card disabled">
-      <div class="nb-nav-dir">이전 글</div>
-      <div class="nb-nav-title">첫 번째 글입니다.</div>
-    </div>
-    {{ end }}
-
-    {{ with .NextInSection }}
-    <a href="{{ .Permalink }}" class="nb-nav-card next">
-      <div class="nb-nav-dir">다음 글 <i class="fa-solid fa-chevron-right"></i></div>
-      <div class="nb-nav-title">{{ .Title }}</div>
-    </a>
-    {{ else }}
-    <div class="nb-nav-card disabled">
-      <div class="nb-nav-dir">다음 글</div>
-      <div class="nb-nav-title">마지막 글입니다.</div>
-    </div>
-    {{ end }}
-  </nav>
-
-  <!-- 목록으로 돌아가기 버튼 -->
-  <div class="nb-back-to-list-wrap">
-    <a href="/posts/picksafe/" class="nb-back-list-btn">
-      <i class="fa-solid fa-bars"></i> 목록으로
-    </a>
-  </div>
 </div>
 {{ end }}

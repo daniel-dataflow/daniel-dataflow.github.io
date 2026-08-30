@@ -13,7 +13,7 @@
           포스트 목록
         {{ end }}
       </h2>
-      <span class="nb-list-badge">총 {{ len .Paginator.Pages }}개의 글</span>
+      <span class="nb-list-badge">총 {{ len .RegularPages }}개의 글</span>
     </div>
     
     <!-- 보기 모드 전환 버튼 (카드형 / 목록형) -->
@@ -29,7 +29,7 @@
 
   <!-- 포스트 목록 컨테이너 -->
   <div class="nb-posts-container view-card" id="nb-posts-list">
-    {{ $paginator := .Paginate (where .Site.RegularPages "Type" "in" .Site.Params.mainSections | default .Site.RegularPages) }}
+    {{ $paginator := .Paginate .RegularPages }}
     {{ if eq (len $paginator.Pages) 0 }}
     <div class="nb-empty-state">
       <i class="fa-regular fa-folder-open"></i>
@@ -40,7 +40,7 @@
       <article class="nb-post-item" data-title="{{ .Title }}" data-tags="{{ with .Params.tags }}{{ delimit . " " }}{{ end }}">
         <div class="nb-post-main">
           <div class="nb-post-meta-top">
-            <span class="nb-post-cat">{{ .Params.category | default "PickSafe" }}</span>
+            <span class="nb-post-cat">{{ .Params.category | default (.CurrentSection.Title | default "PickSafe") }}</span>
             <span class="nb-post-date">{{ .Date.Format "2006.01.02 15:04" }}</span>
           </div>
           <h3 class="nb-post-title">

@@ -1,6 +1,6 @@
 {{ define "main" }}
 <div class="nb-content-card">
-  <!-- 카테고리/태그 목록 헤더 -->
+  <!-- 상단 타이틀 헤더 -->
   <div class="nb-list-header">
     <div class="nb-list-title-wrap">
       <h2 class="nb-list-title">
@@ -10,79 +10,49 @@
           <i class="fa-solid fa-tags"></i> 태그 모음
         {{ end }}
       </h2>
+      <span class="nb-list-badge">
+        {{ if eq .Data.Plural "categories" }}
+          총 {{ len (site.GetPage "section" "posts").Sections }}개의 카테고리
+        {{ else }}
+          총 {{ len .Data.Terms }}개의 태그
+        {{ end }}
+      </span>
     </div>
   </div>
 
   {{ if eq .Data.Plural "categories" }}
   <!-- 카테고리 그리드 뷰 -->
   <div class="nb-category-grid">
-    {{ range (where .Site.Pages "Section" "posts") }}
-      {{ if and .IsSection (ne .Section "") }}
-      <div class="nb-cat-card">
-        <div class="nb-cat-card-header">
-          <div class="nb-cat-icon"><i class="fa-solid fa-folder"></i></div>
-          <div class="nb-cat-info">
-            <h3 class="nb-cat-name"><a href="{{ .RelPermalink }}">{{ .Title }}</a></h3>
-            <p class="nb-cat-desc">{{ .Description | default (printf "%s 프로젝트 및 기술 아카이브" .Title) }}</p>
-          </div>
-          <span class="nb-cat-badge">{{ len .RegularPages }}개의 포스트</span>
+    {{ range (site.GetPage "section" "posts").Sections }}
+    <div class="nb-cat-card">
+      <div class="nb-cat-card-header">
+        <div class="nb-cat-icon"><i class="fa-solid fa-folder"></i></div>
+        <div class="nb-cat-info">
+          <h3 class="nb-cat-name"><a href="{{ .RelPermalink }}">{{ .Title }}</a></h3>
+          <p class="nb-cat-desc">{{ .Description | default (printf "%s 프로젝트 및 기술 아카이브" .Title) }}</p>
         </div>
-        <ul class="nb-cat-post-list">
-          {{ range first 4 .RegularPages }}
-          <li>
-            <a href="{{ .Permalink }}">{{ .Title }}</a>
-            <span class="nb-cat-post-date">{{ .Date.Format "01.02" }}</span>
-          </li>
-          {{ end }}
-        </ul>
-        <div class="nb-cat-card-footer">
-          <a href="{{ .RelPermalink }}" class="nb-cat-view-all">전체보기 &rarr;</a>
-        </div>
+        <span class="nb-cat-badge">{{ len .RegularPages }}개의 포스트</span>
       </div>
-      {{ end }}
-    {{ end }}
-
-    <!-- 동적 카테고리들 -->
-    {{ range $name, $taxonomy := .Data.Terms }}
-      {{ $isSectionAlready := false }}
-      {{ range (where $.Site.Pages "Section" "posts") }}
-        {{ if and .IsSection (eq (lower .Title) (lower $name)) }}
-          {{ $isSectionAlready = true }}
+      <ul class="nb-cat-post-list">
+        {{ range first 4 .RegularPages }}
+        <li>
+          <a href="{{ .Permalink }}">{{ .Title }}</a>
+          <span class="nb-cat-post-date">{{ .Date.Format "01.02" }}</span>
+        </li>
         {{ end }}
-      {{ end }}
-      {{ if not $isSectionAlready }}
-      <div class="nb-cat-card">
-        <div class="nb-cat-card-header">
-          <div class="nb-cat-icon"><i class="fa-solid fa-folder-open"></i></div>
-          <div class="nb-cat-info">
-            <h3 class="nb-cat-name"><a href="{{ $taxonomy.Page.Permalink }}">{{ $name | humanize }}</a></h3>
-            <p class="nb-cat-desc">{{ $name | humanize }} 관련 기술 글</p>
-          </div>
-          <span class="nb-cat-badge">{{ $taxonomy.Count }}개의 포스트</span>
-        </div>
-        <ul class="nb-cat-post-list">
-          {{ range first 4 $taxonomy.Pages }}
-          <li>
-            <a href="{{ .Permalink }}">{{ .Title }}</a>
-            <span class="nb-cat-post-date">{{ .Date.Format "01.02" }}</span>
-          </li>
-          {{ end }}
-        </ul>
-        <div class="nb-cat-card-footer">
-          <a href="{{ $taxonomy.Page.Permalink }}" class="nb-cat-view-all">전체보기 &rarr;</a>
-        </div>
+      </ul>
+      <div class="nb-cat-card-footer">
+        <a href="{{ .RelPermalink }}" class="nb-cat-view-all">전체보기 &rarr;</a>
       </div>
-      {{ end }}
+    </div>
     {{ end }}
   </div>
-
   {{ else }}
-  <!-- 태그 클라우드 큰 뷰 -->
-  <div class="nb-tag-cloud-large">
+  <!-- 태그 클라우드 뷰 -->
+  <div class="nb-tag-cloud" style="padding: 20px;">
     {{ range $name, $taxonomy := .Data.Terms }}
-    <a href="{{ $taxonomy.Page.Permalink }}" class="nb-tag-pill-large">
-      <span class="nb-tag-name">#{{ $name }}</span>
-      <span class="nb-tag-num">{{ $taxonomy.Count }}</span>
+    <a href="{{ $taxonomy.Page.Permalink }}" class="nb-tag-badge" style="font-size: 1rem; padding: 6px 14px; margin: 4px;">
+      #{{ $name }} <span class="nb-tag-count">{{ $taxonomy.Count }}</span>
     </a>
     {{ end }}
   </div>
