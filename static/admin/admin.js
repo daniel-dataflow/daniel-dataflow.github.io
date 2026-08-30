@@ -873,6 +873,25 @@ function openAiDraftModal() {
   const badge = document.getElementById('apiKeySaveBadge');
   if (badge) badge.textContent = savedKey ? '✓ 브라우저에 저장됨' : '';
 
+  // Model Selection (Default: gemini-3.5-flash)
+  const savedModel = localStorage.getItem('gemini_selected_model') || 'gemini-3.5-flash';
+  const modelSelect = document.getElementById('geminiModelSelect');
+  const customInput = document.getElementById('geminiCustomModelInput');
+
+  if (modelSelect) {
+    const hasOption = Array.from(modelSelect.options).some(opt => opt.value === savedModel);
+    if (hasOption) {
+      modelSelect.value = savedModel;
+      if (customInput) customInput.style.display = 'none';
+    } else {
+      modelSelect.value = '__custom__';
+      if (customInput) {
+        customInput.style.display = 'block';
+        customInput.value = savedModel;
+      }
+    }
+  }
+
   const savedPrompt = localStorage.getItem('gemini_prompt_template') || DEFAULT_GEMINI_PROMPT;
   const promptInput = document.getElementById('geminiPromptTemplateInput');
   if (promptInput) promptInput.value = savedPrompt;
@@ -899,6 +918,19 @@ function openAiDraftModal() {
   }
 }
 
+function handleModelChange(val) {
+  const customInput = document.getElementById('geminiCustomModelInput');
+  if (val === '__custom__') {
+    if (customInput) {
+      customInput.style.display = 'block';
+      customInput.focus();
+    }
+  } else {
+    if (customInput) customInput.style.display = 'none';
+    localStorage.setItem('gemini_selected_model', val);
+  }
+}
+
 function closeAiDraftModal() {
   document.getElementById('aiModal').style.display = 'none';
 }
@@ -913,6 +945,11 @@ function saveGeminiApiKeyAuto(val) {
 function saveAiPromptSettingsManual() {
   const key = (document.getElementById('geminiApiKeyInput')?.value || '').trim();
   const prompt = (document.getElementById('geminiPromptTemplateInput')?.value || '').trim();
+  const modelSelect = document.getElementById('geminiModelSelect');
+  let model = modelSelect ? modelSelect.value : 'gemini-3.5-flash';
+  if (model === '__custom__') {
+    model = (document.getElementById('geminiCustomModelInput')?.value || '').trim() || 'gemini-3.5-flash';
+  }
 
   if (!prompt) {
     alert('프롬프트 템플릿 내용을 입력해 주세요.');
@@ -921,7 +958,8 @@ function saveAiPromptSettingsManual() {
 
   localStorage.setItem('gemini_api_key', key);
   localStorage.setItem('gemini_prompt_template', prompt);
-  alert('✨ Gemini API Key와 커스텀 프롬프트 템플릿이 브라우저에 안전하게 저장되었습니다!');
+  localStorage.setItem('gemini_selected_model', model);
+  alert(`✨ Gemini API Key, 모델(${model}) 및 커스텀 프롬프트 템플릿이 브라우저에 안전하게 저장되었습니다!`);
 }
 
 function resetAiPromptTemplate() {
@@ -939,6 +977,12 @@ async function generateAiDraftWithGemini() {
   const extraNotes = (document.getElementById('aiSourceNotes')?.value || '').trim();
   const editorText = (document.getElementById('markdownEditor')?.value || '').trim();
   const statusEl = document.getElementById('aiDraftStatus');
+
+  const modelSelect = document.getElementById('geminiModelSelect');
+  let chosenModel = modelSelect ? modelSelect.value : 'gemini-3.5-flash';
+  if (chosenModel === '__custom__') {
+    chosenModel = (document.getElementById('geminiCustomModelInput')?.value || '').trim() || 'gemini-3.5-flash';
+  }
 
   if (!apiKey) {
     alert('Gemini API Key를 입력해 주세요.');
@@ -961,7 +1005,8 @@ async function generateAiDraftWithGemini() {
 
   localStorage.setItem('gemini_api_key', apiKey);
   localStorage.setItem('gemini_prompt_template', customTemplate);
-  statusEl.textContent = '🤖 Gemini가 현재 본문을 바탕으로 글을 재구성 중입니다...';
+  localStorage.setItem('gemini_selected_model', chosenModel);
+  statusEl.textContent = `🤖 ${chosenModel} 모델이 현재 본문을 바탕으로 글을 재구성 중입니다...`;
 
   const category = document.getElementById('postCategorySelect').value || 'PickSafe';
   const dateStr = new Date().toISOString().replace('T', ' ').substring(0, 19);
@@ -976,31 +1021,49 @@ async function generateAiDraftWithGemini() {
     finalPrompt += `\n\n[원본 개발 노트 및 요청사항]:\n${combinedSource}\n`;
   }
 
-  try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: finalPrompt }] }]
-      })
-    });
+  // Candidate fallback list: chosenModel first, then alternatives
+  const candidateModels = [chosenModel, 'gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.1-flash-lite']
+    .filter((m, idx, arr) => m && arr.indexOf(m) === idx);
 
-    if (res.status === 200) {
-      const data = await res.json();
-      const draft = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      document.getElementById('markdownEditor').value = draft;
-      handleEditorChange();
-      closeAiDraftModal();
-      alert('✨ 에디터 본문 기반 AI 재구성이 완료되었습니다! 에디터에서 내용을 확인해 보세요.');
-    } else {
-      const err = await res.json();
-      alert('AI 생성 실패: ' + (err.error?.message || res.statusText));
+  let success = false;
+  let lastErrorMsg = '';
+
+  for (const modelToTry of candidateModels) {
+    try {
+      statusEl.textContent = `🤖 ${modelToTry} 모델로 글 작성 중...`;
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelToTry}:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: finalPrompt }] }]
+        })
+      });
+
+      if (res.status === 200) {
+        const data = await res.json();
+        const draft = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        document.getElementById('markdownEditor').value = draft;
+        handleEditorChange();
+        closeAiDraftModal();
+        alert(`✨ [${modelToTry}] 모델 기반 AI 재구성이 성공적으로 완료되었습니다! 에디터에서 확인해 보세요.`);
+        success = true;
+        break;
+      } else {
+        const err = await res.json();
+        lastErrorMsg = err.error?.message || res.statusText;
+        console.warn(`Model ${modelToTry} failed:`, lastErrorMsg);
+        // Continue to fallback model if 404 / 400 (model not found / deprecated)
+      }
+    } catch (e) {
+      lastErrorMsg = e.message;
     }
-  } catch (e) {
-    alert('AI 생성 중 오류: ' + e.message);
-  } finally {
-    statusEl.textContent = '';
   }
+
+  if (!success) {
+    alert(`AI 생성 실패: ${lastErrorMsg}\n\n모든 추천 모델(3.5 Flash, 3.5 Flash-Lite, 3.6 Flash) 호출을 시도했으나 실패했습니다. API Key 권한을 확인해 주세요.`);
+  }
+
+  statusEl.textContent = '';
 }
 
 // ─── 10. Pixel-Perfect 100% Identical Naver Blog Live Preview ───
