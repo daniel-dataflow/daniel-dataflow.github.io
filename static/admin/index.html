@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daniel Tech Blog - Standalone Admin Studio & CMS</title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <!-- Fonts & Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Highlight.js Theme -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+  <!-- Admin Stylesheet -->
+  <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+
+  <!-- 1. 관리자 인증 로그인 모달 (토큰 미등록 시 노출) -->
+  <div id="loginOverlay" class="admin-login-overlay" style="display: none;">
+    <div class="login-card">
+      <div class="login-icon">🔒</div>
+      <h2 class="login-title">관리자 인증 (Admin Studio)</h2>
+      <p class="login-subtitle">
+        Daniel Tech Blog의 안전한 관리를 위해<br>GitHub Personal Access Token(PAT)을 입력해 주세요.
+      </p>
+      <div class="login-form-group">
+        <label for="adminPatInput">GitHub PAT (repo write 권한):</label>
+        <input type="password" id="adminPatInput" class="login-input" placeholder="github_pat_11..." autocomplete="off">
+      </div>
+      <button type="button" class="login-btn" onclick="authenticateAdmin()">
+        <i class="fa-solid fa-key"></i> 관리자 로그인
+      </button>
+      <p class="login-hint">
+        💡 토큰은 브라우저(localStorage)에만 안전하게 보관되며 외부로 유출되지 않습니다.
+      </p>
+    </div>
+  </div>
+
+  <!-- 2. 상단 헤더 탑바 -->
+  <header class="admin-header">
+    <div class="header-brand">
+      <span class="brand-badge">STUDIO</span>
+      <h1 class="brand-title">Daniel Tech Blog CMS</h1>
+      <span class="current-status-badge" id="currentDocStatusBadge">선택된 글 없음</span>
+    </div>
+
+    <div class="header-actions">
+      <!-- ✨ 새 글 작성 -->
+      <button type="button" class="btn-header btn-primary-green" onclick="startNewPost()" title="새 마크다운 글 직접 작성">
+        <i class="fa-solid fa-pen-nib"></i> 새 글 작성
+      </button>
+      <!-- ⚙️ 블로그 설정 -->
+      <button type="button" class="btn-header" onclick="openSettingsModal()" title="블로그 타이틀, 상단 뱃지, 소개글 전역 설정">
+        <i class="fa-solid fa-sliders"></i> 블로그 설정
+      </button>
+      <!-- 📂 카테고리 관리 -->
+      <button type="button" class="btn-header" onclick="openCategoryModal()" title="카테고리 생성 및 관리">
+        <i class="fa-solid fa-folder-tree"></i> 카테고리
+      </button>
+      <!-- 🖼️ 배너 & 프로필 관리 -->
+      <button type="button" class="btn-header" onclick="openBannerModal()" title="상단 스킨 배너 및 사이드바 프로필 사진 교체">
+        <i class="fa-solid fa-image"></i> 배너/프로필
+      </button>
+      <!-- 🤖 AI 초안 -->
+      <button type="button" class="btn-header" onclick="openAiDraftModal()" title="Gemini AI 기반 기술 글 초안 자동 작성">
+        <i class="fa-solid fa-robot"></i> AI 초안
+      </button>
+      <!-- 🚀 GitHub 원클릭 배포 -->
+      <button type="button" class="btn-header btn-publish" id="btnPublish" onclick="publishPostToGitHub()" title="현재 에디터의 글을 GitHub에 실시간 배포">
+        <i class="fa-solid fa-cloud-arrow-up"></i> GitHub 배포
+      </button>
+      <!-- 🔒 로그아웃 -->
+      <button type="button" class="btn-header btn-logout" onclick="logoutAdmin()" title="토큰 삭제 및 로그아웃">
+        <i class="fa-solid fa-right-from-bracket"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- 3. 메인 작업 공간 (3단 분할 레이아웃) -->
+  <main class="admin-workspace">
+    <!-- 좌측 사이드바: 기발행 포스트 목록 -->
+    <aside class="pane-sidebar">
+      <div class="sidebar-tabs">
+        <button type="button" class="side-tab active" id="tabPosts" onclick="switchSidebarTab('posts')">
+          📑 기발행 글 (<span id="postCountNum">0</span>)
+        </button>
+        <button type="button" class="side-tab" id="tabCategories" onclick="switchSidebarTab('categories')">
+          📂 카테고리 (<span id="catCountNum">0</span>)
+        </button>
+      </div>
+      <div class="sidebar-search-bar">
+        <input type="text" id="postSearchInput" class="search-input" placeholder="🔍 포스트 검색..." oninput="filterPostsList()">
+      </div>
+      <div class="sidebar-items-list" id="sidebarItemsList">
+        <div style="padding: 20px; text-align: center; color: #94a3b8;">포스트 목록 불러오는 중...</div>
+      </div>
+    </aside>
+
+    <!-- 중앙: 스마트 마크다운 에디터 -->
+    <section class="pane-editor">
+      <div class="editor-header">
+        <select id="postCategorySelect" class="category-dropdown" title="카테고리 선택" onchange="handleCategoryChange(this.value)">
+          <option value="picksafe">📁 PickSafe</option>
+          <option value="lookalike">📁 Lookalike</option>
+          <option value="__new__">➕ 새 카테고리 추가...</option>
+        </select>
+        <div class="editor-toolbar">
+          <button type="button" class="tool-btn" onclick="insertMarkdown('**', '**', '굵은글씨')" title="굵게"><b>B</b></button>
+          <button type="button" class="tool-btn" onclick="insertMarkdown('*', '*', '기울임')" title="기울임"><i>I</i></button>
+          <button type="button" class="tool-btn" onclick="insertMarkdown('## ', '', '소제목')" title="H2 소제목">H2</button>
+          <button type="button" class="tool-btn" onclick="insertMarkdown('### ', '', '소제목')" title="H3 소제목">H3</button>
+          <button type="button" class="tool-btn" onclick="insertMarkdown('> ', '', '인용구')" title="인용">❝</button>
+          <button type="button" class="tool-btn" onclick="insertMarkdown('```python\n', '\n```', '# Python Code')" title="코드블록">&lt;/&gt;</button>
+          <button type="button" class="tool-btn" onclick="insertMarkdown('| 제목1 | 제목2 |\n|---|---|\n| 내용1 | 내용2 |', '', '')" title="표 삽입">▦</button>
+          <label class="tool-btn" style="cursor: pointer;" title="이미지 업로드">
+            🖼️ 이미지
+            <input type="file" id="inlineImageInput" accept="image/*" style="display: none;" onchange="handleInlineImageUpload(event)">
+          </label>
+        </div>
+      </div>
+
+      <div class="editor-wrapper" id="editorDropZone">
+        <textarea id="markdownEditor" class="markdown-textarea" placeholder="여기에 마크다운 본문을 작성하세요.&#10;&#10;💡 이미지를 마우스로 끌어다 놓거나 붙여넣기(Ctrl+V)하면 GitHub에 자동 업로드되고 마크다운 태그가 삽입됩니다." oninput="handleEditorChange()"></textarea>
+        <div class="drop-overlay" id="dropOverlay">
+          <div class="drop-box">🖼️ 이미지를 놓으면 GitHub 저장소(static/blog_images/)에 자동 업로드됩니다!</div>
+        </div>
+      </div>
+
+      <div class="editor-footer">
+        <span id="editorCharCount">0자</span>
+        <span id="editorSaveStatus">준비됨</span>
+      </div>
+    </section>
+
+    <!-- 우측: 네이버 블로그 스타일 실시간 미리보기 -->
+    <section class="pane-preview">
+      <div class="preview-header">
+        <span>👁️ 실시간 네이버 블로그 뷰어</span>
+        <span style="font-size: 0.75rem; color: #03c75a; font-weight: 700;"><i class="fa-solid fa-circle-check"></i> Live Sync</span>
+      </div>
+      <div class="preview-body" id="previewViewport">
+        <p style="color: #94a3b8; text-align: center; margin-top: 50px;">마크다운을 입력하시면 네이버 블로그 스타일로 실시간 렌더링됩니다.</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- 4. ⚙️ 블로그 전역 브랜딩 설정 모달 -->
+  <div id="settingsModal" class="admin-modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title"><i class="fa-solid fa-sliders"></i> 블로그 브랜딩 및 소개글 전역 설정 (hugo.yaml)</div>
+        <button type="button" class="modal-close-btn" onclick="closeSettingsModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>블로그 타이틀 (Site Title)</label>
+          <input type="text" id="cfgSiteTitle" class="form-input" placeholder="예: Daniel Tech Blog">
+        </div>
+        <div class="form-group">
+          <label>상단 배너 초록 뱃지 문구 (Banner Badge)</label>
+          <input type="text" id="cfgBannerBadge" class="form-input" placeholder="예: Engineering & Architecture Archive">
+        </div>
+        <div class="form-group">
+          <label>블로그 서브타이틀 (Subtitle)</label>
+          <input type="text" id="cfgSubtitle" class="form-input" placeholder="예: 아키텍처 및 백엔드 엔지니어링 아카이브">
+        </div>
+        <div class="form-group">
+          <label>SEO 검색 요약 설명 (Description)</label>
+          <input type="text" id="cfgDescription" class="form-input" placeholder="블로그 검색 시 노출될 메타 설명문">
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label>작성자 닉네임 (Author)</label>
+            <input type="text" id="cfgAuthor" class="form-input" placeholder="Daniel">
+          </div>
+          <div class="form-group">
+            <label>직함 / 역할 (Role)</label>
+            <input type="text" id="cfgAuthorRole" class="form-input" placeholder="Backend & Systems Architect">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>사이드바 프로필 자기소개글 (Bio)</label>
+          <textarea id="cfgAuthorBio" class="form-input" rows="3" style="resize: vertical; line-height: 1.5;" placeholder="사이드바 프로필 카드에 들어갈 소개글"></textarea>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label>문의 이메일</label>
+            <input type="email" id="cfgEmail" class="form-input" placeholder="daniel.han.developer@gmail.com">
+          </div>
+          <div class="form-group">
+            <label>GitHub 프로필 URL</label>
+            <input type="text" id="cfgGithubUrl" class="form-input" placeholder="https://github.com/daniel-dataflow">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <span id="settingsSaveStatus" style="font-size: 0.8rem; color: #94a3b8;">대기 중</span>
+        <button type="button" class="btn-header btn-primary-green" onclick="saveSiteSettingsToGitHub()">
+          <i class="fa-solid fa-floppy-disk"></i> 설정 저장 & GitHub 배포
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. 📂 카테고리 관리 모달 -->
+  <div id="categoryModal" class="admin-modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title"><i class="fa-solid fa-folder-tree"></i> 블로그 카테고리 관리</div>
+        <button type="button" class="modal-close-btn" onclick="closeCategoryModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>현재 활성화된 카테고리 목록:</label>
+          <div class="category-chips-wrap" id="categoryChipsModalContainer">
+            <span class="cat-badge-chip">로딩 중...</span>
+          </div>
+        </div>
+        <div style="background: rgba(15, 23, 42, 0.6); padding: 16px; border-radius: 8px; border: 1px solid var(--border-color);">
+          <h4 style="font-size: 0.9rem; margin-bottom: 12px; color: #38bdf8;">➕ 새 카테고리 생성</h4>
+          <div class="form-group">
+            <label>카테고리 표시 이름 (Name)</label>
+            <input type="text" id="newCatName" class="form-input" placeholder="예: 데이터 엔지니어링">
+          </div>
+          <div class="form-group">
+            <label>영문 경로명 (Slug - URL)</label>
+            <input type="text" id="newCatSlug" class="form-input" placeholder="예: data-engineering (영문, 숫자, 하이픈)">
+          </div>
+          <div class="form-group">
+            <label>카테고리 설명 (Description)</label>
+            <input type="text" id="newCatDesc" class="form-input" placeholder="예: 대용량 데이터 파이프라인 및 엔지니어링 아카이브">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <span id="catModalStatus" style="font-size: 0.8rem; color: #94a3b8;"></span>
+        <button type="button" class="btn-header btn-primary-green" onclick="createNewCategoryOnGitHub()">
+          <i class="fa-solid fa-plus"></i> 카테고리 생성 & GitHub 연동
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. 🖼️ 배너 & 프로필 교체 모달 -->
+  <div id="bannerModal" class="admin-modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title"><i class="fa-solid fa-image"></i> 상단 배너 & 프로필 아바타 교체</div>
+        <button type="button" class="modal-close-btn" onclick="closeBannerModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="background: var(--bg-input); padding: 16px; border-radius: 8px; margin-bottom: 16px; border: 1px solid var(--border-color);">
+          <h4 style="font-size: 0.9rem; margin-bottom: 6px; color: #ffffff;">🏞️ 상단 스킨 배너 (banner.jpg)</h4>
+          <p style="font-size: 0.78rem; color: #94a3b8; margin-bottom: 12px;">블로그 최상단 배경 배너 이미지입니다. 권장 규격: 1920x400</p>
+          <input type="file" id="bannerFileInput" accept="image/*" style="display: none;" onchange="uploadBannerToGitHub(event)">
+          <button type="button" class="btn-header" onclick="document.getElementById('bannerFileInput').click()">
+            <i class="fa-solid fa-cloud-arrow-up"></i> 배너 이미지 업로드
+          </button>
+          <span id="bannerUploadStatus" style="font-size: 0.78rem; color: #94a3b8; margin-left: 10px;">대기 중</span>
+        </div>
+
+        <div style="background: var(--bg-input); padding: 16px; border-radius: 8px; border: 1px solid var(--border-color);">
+          <h4 style="font-size: 0.9rem; margin-bottom: 6px; color: #ffffff;">👤 사이드바 프로필 아바타 (profile.jpg)</h4>
+          <p style="font-size: 0.78rem; color: #94a3b8; margin-bottom: 12px;">좌측 사이드바 프로필 카드에 표시되는 사진입니다. 권장 규격: 400x400 정방형</p>
+          <input type="file" id="profileFileInput" accept="image/*" style="display: none;" onchange="uploadProfileToGitHub(event)">
+          <button type="button" class="btn-header" onclick="document.getElementById('profileFileInput').click()">
+            <i class="fa-solid fa-cloud-arrow-up"></i> 프로필 사진 업로드
+          </button>
+          <span id="profileUploadStatus" style="font-size: 0.78rem; color: #94a3b8; margin-left: 10px;">대기 중</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div></div>
+        <button type="button" class="btn-header" onclick="closeBannerModal()">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. 🤖 Gemini AI 초안 생성 모달 -->
+  <div id="aiModal" class="admin-modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title"><i class="fa-solid fa-robot"></i> Gemini AI 기술 블로그 초안 생성기</div>
+        <button type="button" class="modal-close-btn" onclick="closeAiDraftModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Google Gemini API Key (선택/저장):</label>
+          <input type="password" id="geminiApiKeyInput" class="form-input" placeholder="AIzaSy...">
+        </div>
+        <div class="form-group">
+          <label>참조할 노트/기술 요약/ADR 본문:</label>
+          <textarea id="aiSourceNotes" class="form-input" rows="8" style="resize: vertical; line-height: 1.5;" placeholder="여기에 기술 결정 내용, 코드 스니펫, 문제 해결 과정을 자유롭게 붙여넣으세요. Gemini가 시니어 엔지니어링 블로그 글로 재구성해 드립니다."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <span id="aiDraftStatus" style="font-size: 0.8rem; color: #94a3b8;"></span>
+        <button type="button" class="btn-header btn-primary-green" onclick="generateAiDraftWithGemini()">
+          <i class="fa-solid fa-wand-magic-sparkles"></i> 1초 만에 블로그 글 생성
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts: Marked.js, Highlight.js, Mermaid.js & Standalone Admin.js -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script src="/admin/admin.js"></script>
+</body>
+</html>
