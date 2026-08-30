@@ -48,7 +48,7 @@ menu:
       weight: 10
     - identifier: picksafe
       name: "PickSafe"
-      url: /categories/picksafe/
+      url: /posts/picksafe/
       weight: 20
     - identifier: categories
       name: "카테고리"
