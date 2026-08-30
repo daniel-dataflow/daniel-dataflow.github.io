@@ -497,6 +497,12 @@ title: "${title}"
 pagination:
   pagerSize: 8
 
+outputs:
+  home:
+    - HTML
+    - RSS
+    - JSON
+
 taxonomies:
   category: categories
   categories: categories
@@ -524,7 +530,6 @@ params:
     show_recent_posts: true
     show_tags: true
     show_search: true
-    show_stats: true
 
   # 포스트 설정
   ShowReadingTime: true
@@ -535,25 +540,21 @@ params:
   ShowWordCount: true
   ShowToc: true
 
-# 상단 GNB 메뉴바
+# 상단 GNB 메뉴바 (카테고리 전체보기로 단일화하여 모든 카테고리 균등 대우)
 menu:
   main:
     - identifier: home
       name: "홈"
       url: /
       weight: 10
-    - identifier: picksafe
-      name: "PickSafe"
-      url: /posts/picksafe/
-      weight: 20
     - identifier: categories
       name: "카테고리"
       url: /categories/
-      weight: 30
+      weight: 20
     - identifier: tags
       name: "태그 모음"
       url: /tags/
-      weight: 40
+      weight: 30
 `;
 
   try {
@@ -919,7 +920,7 @@ ${notes}
   }
 }
 
-// ─── 10. Robust Markdown & SmartEditor Live Preview ───
+// ─── 10. Pixel-Perfect 100% Identical Naver Blog Live Preview ───
 let previewTimer = null;
 function handleEditorChange() {
   isEditorDirty = true;
@@ -941,7 +942,7 @@ function renderLivePreview() {
     return;
   }
 
-  // 1. Robust Frontmatter Extraction (supports CRLF, LF, trailing spaces)
+  // 1. Frontmatter Extraction
   let body = raw;
   let title = '';
   let category = '';
@@ -970,13 +971,11 @@ function renderLivePreview() {
     }
   }
 
-  // Fallback category from dropdown if missing
   if (!category) {
     category = document.getElementById('postCategorySelect')?.value || 'PickSafe';
   }
 
   // 2. Preprocess body: Convert dashes (---) directly under text into explicit divider <hr>
-  // Prevents standard Markdown from accidentally converting previous lines into an H2 Setext heading!
   body = body.replace(/([^\n\r])\r?\n(\s*[-*_]{3,}\s*)(\r?\n|$)/g, '$1\n\n$2\n\n');
 
   if (typeof marked !== 'undefined') {
@@ -991,44 +990,92 @@ function renderLivePreview() {
       }
     });
 
-    // SmartEditor ONE Header Structure
+    // 100% Identical Structure with single.html
+    let breadcrumbHtml = '';
     let headerHtml = '';
     if (title) {
+      breadcrumbHtml = `
+        <div class="nb-breadcrumb">
+          <a href="#"><i class="fa-solid fa-house"></i> 홈</a>
+          <span class="nb-bc-sep">&gt;</span>
+          <a href="#">카테고리</a>
+          <span class="nb-bc-sep">&gt;</span>
+          <a href="#">${escapeHtml(category)}</a>
+          <span class="nb-bc-sep">&gt;</span>
+          <span class="nb-bc-current">${escapeHtml(title.length > 30 ? title.substring(0, 30) + '...' : title)}</span>
+        </div>
+      `;
+
       headerHtml = `
-        <div class="nb-smart-header">
-          <div class="nb-preview-cat-badge">${escapeHtml(category)}</div>
-          <h1 class="nb-preview-main-title">${escapeHtml(title)}</h1>
-          <div class="nb-preview-meta-row">
-            <div class="nb-meta-author-box">
-              <img src="/images/profile.jpg" class="nb-meta-avatar" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=Daniel&background=03c75a&color=fff&size=64';">
-              <div class="nb-meta-names">
-                <span class="nb-meta-author-name">Daniel</span>
-                <span class="nb-meta-date">${escapeHtml(date || new Date().toISOString().substring(0, 10))}</span>
+        <header class="nb-article-header">
+          <div class="nb-article-cat">
+            <span class="nb-cat-tag">${escapeHtml(category)}</span>
+          </div>
+          <h1 class="nb-article-title">${escapeHtml(title)}</h1>
+          <div class="nb-article-meta-row">
+            <div class="nb-meta-left">
+              <img src="/images/profile.jpg" alt="Daniel" class="nb-author-avatar-img" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=Daniel&background=03c75a&color=fff&size=64';">
+              <div class="nb-meta-author-text">
+                <span class="nb-author-name-bold">Daniel</span>
+                <span class="nb-post-publish-date">${escapeHtml(date || new Date().toISOString().substring(0, 10))}</span>
               </div>
             </div>
-            <div class="nb-meta-actions-box">
-              <span class="nb-meta-pill"><i class="fa-regular fa-heart" style="color: #03c75a;"></i> 1</span>
-              <span class="nb-meta-pill"><i class="fa-regular fa-comment-dots"></i> 0</span>
+            <div class="nb-meta-right">
+              <button class="nb-util-btn" title="게시글 링크 복사"><i class="fa-solid fa-link"></i> URL 복사</button>
             </div>
           </div>
-          <div class="nb-smart-divider"></div>
-        </div>
+        </header>
       `;
     }
 
     let parsedBody = marked.parse(body);
 
-    // Tags Footer
     let tagsHtml = '';
     if (tags.length > 0) {
       tagsHtml = `
-        <div class="nb-preview-tags-wrap">
-          ${tags.map(t => `<span class="nb-preview-tag-pill">#${escapeHtml(t)}</span>`).join('')}
+        <div class="nb-article-tags-wrap">
+          <div class="nb-tag-label"><i class="fa-solid fa-tags"></i> 관련 태그</div>
+          <div class="nb-article-tags">
+            ${tags.map(t => `<span class="nb-post-tag">#${escapeHtml(t)}</span>`).join('')}
+          </div>
         </div>
       `;
     }
 
-    viewport.innerHTML = `<div class="nb-preview-sheet">${headerHtml}<div class="nb-preview-content">${parsedBody}</div>${tagsHtml}</div>`;
+    let footerHtml = `
+      <div class="nb-article-footer">
+        <div class="nb-like-action-box">
+          <button class="nb-like-btn">
+            <i class="fa-regular fa-heart"></i>
+            <span>이 글이 유익했다면 공감하기</span>
+            <span class="nb-like-count">0</span>
+          </button>
+        </div>
+        <div class="nb-author-bottom-card">
+          <img src="/images/profile.jpg" alt="Daniel" class="nb-bot-avatar" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=Daniel&background=03c75a&color=fff&size=96';">
+          <div class="nb-bot-info">
+            <h4>Daniel <span class="nb-bot-role">Backend & Systems Architect</span></h4>
+            <p>초고속 응답 시스템 설계와 확장 가능한 데이터 파이프라인을 구축합니다. 기술적 의사결정의 이유와 Trade-off를 깊이 있게 기록합니다.</p>
+            <div class="nb-bot-links">
+              <a href="https://github.com/daniel-dataflow" target="_blank"><i class="fa-brands fa-github"></i> GitHub</a>
+              <a href="mailto:daniel.han.developer@gmail.com"><i class="fa-regular fa-envelope"></i> Email</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    viewport.innerHTML = `
+      <div class="nb-content-card nb-single-article">
+        ${breadcrumbHtml}
+        ${headerHtml}
+        <div class="nb-article-body" id="nb-article-body">
+          ${parsedBody}
+        </div>
+        ${tagsHtml}
+        ${footerHtml}
+      </div>
+    `;
 
     // Render Mermaid diagrams
     if (typeof mermaid !== 'undefined') {
