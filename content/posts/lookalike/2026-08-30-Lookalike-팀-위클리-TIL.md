@@ -1,6 +1,6 @@
 ---
-title: "[Lookalike] 팀 위클리 TIL"
-date: "2026.01.30 09:00:00"
+title: "[Lookalike] 데이터 엔지니어 최종프로젝트 1주차 수행일지"
+date: "2026-01-30 09:00:00"
 category: "Lookalike"
 tags: ["Architecture", "Backend", "Optimization"]
 ---
