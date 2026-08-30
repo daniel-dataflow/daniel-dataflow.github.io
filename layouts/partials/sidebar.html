@@ -1,0 +1,121 @@
+<aside class="nb-sidebar">
+  <!-- 1. 프로필 위젯 -->
+  <div class="nb-widget nb-profile-card">
+    <div class="nb-profile-header">
+      <div class="nb-avatar-wrapper">
+        <img src="{{ .Site.Params.author_avatar }}" alt="{{ .Site.Params.author }}" class="nb-avatar" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=Daniel&background=03c75a&color=fff&size=128';">
+        <span class="nb-status-dot" title="활동 중"></span>
+      </div>
+      <div class="nb-profile-meta">
+        <div class="nb-profile-name">{{ .Site.Params.author }}</div>
+        <div class="nb-profile-role">{{ .Site.Params.author_role }}</div>
+      </div>
+    </div>
+    <p class="nb-profile-bio">{{ .Site.Params.author_bio }}</p>
+    <div class="nb-profile-actions">
+      <a href="{{ .Site.Params.github_url }}" target="_blank" class="nb-btn-primary">
+        <i class="fa-brands fa-github"></i> 깃허브 팔로우
+      </a>
+      <a href="mailto:{{ .Site.Params.email }}" class="nb-btn-sub">
+        <i class="fa-regular fa-envelope"></i> 문의
+      </a>
+    </div>
+    <div class="nb-profile-stats">
+      <div class="nb-stat-item">
+        <span class="nb-stat-label">전체 글</span>
+        <span class="nb-stat-val">{{ len .Site.RegularPages }}개</span>
+      </div>
+      <div class="nb-stat-item">
+        <span class="nb-stat-label">카테고리</span>
+        <span class="nb-stat-val">{{ len .Site.Taxonomies.categories }}개</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. 블로그 내 실시간 검색 위젯 -->
+  <div class="nb-widget nb-search-widget">
+    <div class="nb-search-box">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <input type="text" id="nb-search-input" placeholder="글 제목, 내용, 태그 검색..." autocomplete="off">
+    </div>
+  </div>
+
+  <!-- 3. 카테고리 메뉴 위젯 -->
+  <div class="nb-widget nb-category-widget">
+    <div class="nb-widget-header">
+      <i class="fa-regular fa-folder-open"></i> 카테고리
+    </div>
+    <ul class="nb-category-list">
+      <li class="nb-category-item {{ if .IsHome }}active{{ end }}">
+        <a href="/" class="nb-category-link">
+          <i class="fa-solid fa-list-ul"></i> 전체보기
+          <span class="nb-count">({{ len .Site.RegularPages }})</span>
+        </a>
+      </li>
+      <li class="nb-category-item {{ if hasPrefix .RelPermalink "/posts/picksafe" }}active{{ end }}">
+        <a href="/posts/picksafe/" class="nb-category-link">
+          <i class="fa-regular fa-folder"></i> PickSafe DevLog
+          <span class="nb-count">({{ len (where .Site.RegularPages "Section" "posts") }})</span>
+        </a>
+      </li>
+      {{ range $name, $taxonomy := .Site.Taxonomies.categories }}
+      {{ if ne (lower $name) "picksafe" }}
+      <li class="nb-category-item">
+        <a href="/categories/{{ $name | urlize }}/" class="nb-category-link">
+          <i class="fa-regular fa-folder"></i> {{ $name | humanize }}
+          <span class="nb-count">({{ $taxonomy.Count }})</span>
+        </a>
+      </li>
+      {{ end }}
+      {{ end }}
+    </ul>
+  </div>
+
+  <!-- 4. 최근 글 위젯 -->
+  <div class="nb-widget nb-recent-widget">
+    <div class="nb-widget-header">
+      <i class="fa-solid fa-clock-rotate-left"></i> 최근 포스트
+    </div>
+    <ul class="nb-recent-list">
+      {{ range first 5 .Site.RegularPages }}
+      <li class="nb-recent-item">
+        <a href="{{ .Permalink }}" class="nb-recent-link">
+          <span class="nb-recent-title">{{ .Title }}</span>
+          <span class="nb-recent-date">{{ .Date.Format "2006.01.02" }}</span>
+        </a>
+      </li>
+      {{ end }}
+    </ul>
+  </div>
+
+  <!-- 5. 태그 클라우드 위젯 -->
+  <div class="nb-widget nb-tags-widget">
+    <div class="nb-widget-header">
+      <i class="fa-solid fa-tags"></i> 태그 모음
+    </div>
+    <div class="nb-tag-cloud">
+      {{ range $name, $taxonomy := .Site.Taxonomies.tags }}
+      <a href="/tags/{{ $name | urlize }}/" class="nb-tag-badge">
+        #{{ $name }} <span class="nb-tag-count">{{ $taxonomy.Count }}</span>
+      </a>
+      {{ end }}
+    </div>
+  </div>
+
+  <!-- 6. 방문자 통계 위젯 (네이버 감성) -->
+  <div class="nb-widget nb-stats-widget">
+    <div class="nb-widget-header">
+      <i class="fa-solid fa-chart-line"></i> 방문자 통계
+    </div>
+    <div class="nb-visitor-counts">
+      <div class="nb-v-row">
+        <span>TODAY</span>
+        <span class="nb-v-num" id="nb-today-count">128</span>
+      </div>
+      <div class="nb-v-row">
+        <span>TOTAL</span>
+        <span class="nb-v-num" id="nb-total-count">24,590</span>
+      </div>
+    </div>
+  </div>
+</aside>

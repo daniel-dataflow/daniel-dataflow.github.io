@@ -1,0 +1,104 @@
+{{ define "main" }}
+<div class="nb-content-card">
+  <!-- 목록 상단 헤더 -->
+  <div class="nb-list-header">
+    <div class="nb-list-title-wrap">
+      <h2 class="nb-list-title">
+        <i class="fa-solid fa-list"></i>
+        {{ if .IsHome }}
+          전체 포스트
+        {{ else if .Title }}
+          {{ .Title }}
+        {{ else }}
+          포스트 목록
+        {{ end }}
+      </h2>
+      <span class="nb-list-badge">총 {{ len .Paginator.Pages }}개의 글</span>
+    </div>
+    
+    <!-- 보기 모드 전환 버튼 (카드형 / 목록형) -->
+    <div class="nb-view-toggle">
+      <button class="nb-v-btn active" data-view="card" title="카드형 보기">
+        <i class="fa-solid fa-table-cells-large"></i> 카드형
+      </button>
+      <button class="nb-v-btn" data-view="list" title="목록형 보기">
+        <i class="fa-solid fa-list-ul"></i> 목록형
+      </button>
+    </div>
+  </div>
+
+  <!-- 포스트 목록 컨테이너 -->
+  <div class="nb-posts-container view-card" id="nb-posts-list">
+    {{ $paginator := .Paginate (where .Site.RegularPages "Type" "in" .Site.Params.mainSections | default .Site.RegularPages) }}
+    {{ if eq (len $paginator.Pages) 0 }}
+    <div class="nb-empty-state">
+      <i class="fa-regular fa-folder-open"></i>
+      <p>아직 발행된 게시글이 없습니다.</p>
+    </div>
+    {{ else }}
+      {{ range $paginator.Pages }}
+      <article class="nb-post-item" data-title="{{ .Title }}" data-tags="{{ with .Params.tags }}{{ delimit . " " }}{{ end }}">
+        <div class="nb-post-main">
+          <div class="nb-post-meta-top">
+            <span class="nb-post-cat">{{ .Params.category | default "PickSafe" }}</span>
+            <span class="nb-post-date">{{ .Date.Format "2006.01.02 15:04" }}</span>
+          </div>
+          <h3 class="nb-post-title">
+            <a href="{{ .Permalink }}">{{ .Title }}</a>
+          </h3>
+          <p class="nb-post-summary">
+            {{ .Summary | plainify | htmlUnescape | truncate 160 }}
+          </p>
+          
+          {{ if .Params.tags }}
+          <div class="nb-post-tags">
+            {{ range .Params.tags }}
+            <a href="/tags/{{ . | urlize }}/" class="nb-post-tag">#{{ . }}</a>
+            {{ end }}
+          </div>
+          {{ end }}
+
+          <div class="nb-post-footer-meta">
+            <div class="nb-author-info">
+              <img src="{{ $.Site.Params.author_avatar }}" alt="Daniel" class="nb-mini-avatar" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=Daniel&background=03c75a&color=fff&size=64';">
+              <span class="nb-author-name">{{ $.Site.Params.author }}</span>
+              <span class="nb-read-time"><i class="fa-regular fa-clock"></i> {{ .ReadingTime }}분 분량</span>
+            </div>
+            <div class="nb-post-reactions">
+              <span class="nb-reaction-item" title="공감"><i class="fa-regular fa-heart"></i> <span class="nb-like-num">1</span></span>
+              <span class="nb-reaction-item" title="댓글"><i class="fa-regular fa-comment-dots"></i> 0</span>
+              <a href="{{ .Permalink }}" class="nb-more-btn">본문 읽기 &rarr;</a>
+            </div>
+          </div>
+        </div>
+      </article>
+      {{ end }}
+    {{ end }}
+  </div>
+
+  <!-- 페이지네이션 -->
+  {{ if gt $paginator.TotalPages 1 }}
+  <div class="nb-pagination-wrap">
+    <ul class="nb-pagination">
+      {{ if $paginator.HasPrev }}
+      <li class="nb-page-item prev">
+        <a href="{{ $paginator.Prev.URL }}" class="nb-page-link">&laquo; 이전</a>
+      </li>
+      {{ end }}
+
+      {{ range $paginator.Pagers }}
+      <li class="nb-page-item {{ if eq . $paginator }}active{{ end }}">
+        <a href="{{ .URL }}" class="nb-page-link">{{ .PageNumber }}</a>
+      </li>
+      {{ end }}
+
+      {{ if $paginator.HasNext }}
+      <li class="nb-page-item next">
+        <a href="{{ $paginator.Next.URL }}" class="nb-page-link">다음 &raquo;</a>
+      </li>
+      {{ end }}
+    </ul>
+  </div>
+  {{ end }}
+</div>
+{{ end }}

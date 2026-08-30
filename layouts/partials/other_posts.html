@@ -1,0 +1,44 @@
+{{ $currentPost := . }}
+{{ $category := .Params.category | default "PickSafe" }}
+{{ $relatedPosts := where .Site.RegularPages "Params.category" $category }}
+{{ if eq (len $relatedPosts) 0 }}
+  {{ $relatedPosts = where .Site.RegularPages "Section" .Section }}
+{{ end }}
+
+{{ if gt (len $relatedPosts) 1 }}
+<div class="nb-other-posts-box">
+  <div class="nb-other-posts-header">
+    <div class="nb-other-title">
+      <i class="fa-solid fa-folder-open"></i> <strong>'{{ $category }}'</strong> 카테고리의 다른 글
+      <span class="nb-other-count">({{ len $relatedPosts }})</span>
+    </div>
+    <button class="nb-other-toggle-btn" id="nb-other-toggle">
+      <span>접기</span> <i class="fa-solid fa-chevron-up"></i>
+    </button>
+  </div>
+  <div class="nb-other-posts-body" id="nb-other-posts-body">
+    <table class="nb-other-table">
+      <tbody>
+        {{ range first 6 $relatedPosts }}
+        <tr class="nb-other-row {{ if eq .Permalink $currentPost.Permalink }}current{{ end }}">
+          <td class="nb-other-subject">
+            {{ if eq .Permalink $currentPost.Permalink }}
+            <span class="nb-current-badge">● 현재글</span>
+            <span class="nb-current-title">{{ .Title }}</span>
+            {{ else }}
+            <a href="{{ .Permalink }}" class="nb-other-link">{{ .Title }}</a>
+            {{ end }}
+          </td>
+          <td class="nb-other-date">{{ .Date.Format "2006.01.02" }}</td>
+        </tr>
+        {{ end }}
+      </tbody>
+    </table>
+    {{ if gt (len $relatedPosts) 6 }}
+    <div class="nb-other-more">
+      <a href="/categories/{{ $category | urlize }}/">카테고리 글 더보기 (총 {{ len $relatedPosts }}개) &rarr;</a>
+    </div>
+    {{ end }}
+  </div>
+</div>
+{{ end }}

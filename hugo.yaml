@@ -1,53 +1,50 @@
 baseURL: "https://daniel-dataflow.github.io/"
-languageCode: "ko"
-title: "Daniel Tech"
-theme: "blowfish"
+languageCode: "ko-kr"
+title: "Daniel Tech Log"
 
-# 1페이지당 노출할 글 수
-paginate: 10
-
-# 메인 섹션 지정 (posts 하위의 모든 글 노출)
-mainSections:
-  - "posts"
+pagination:
+  pagerSize: 8
 
 params:
-  colorScheme: "blowfish" # 깔끔한 모던 블루 테마
-  defaultTheme: "light"   # 기본 밝은 테마 (다크모드 토글 지원)
-  
-  # 1. 휑한 대문 대신 네이버/테크기업 스타일의 배너 세팅
-  homepage:
-    layout: "custom"
-    showHero: true
-    heroStyle: "basic" # 심플하고 세련된 테크 헤더 배너
-    heroTitle: "Daniel Tech Log"
-    heroDescription: "PickSafe 서비스 개발 고뇌와 아키텍처 의사결정 아카이브"
-    showRecent: true
-    showRecentItems: 10
-    cardView: false # ❌ 작은 박스 바둑판 끄기 ➔ ⭕ 한 라인에 한 줄씩 깔끔한 와이드 리스트로 출력
+  env: production
+  title: "Daniel Tech Log"
+  subtitle: "PickSafe 아키텍처 및 백엔드 엔지니어링 아카이브"
+  description: "고성능 백엔드 아키텍처, 시스템 최적화, 그리고 실전 엔지니어링 문제 해결 기록소"
+  author: "Daniel"
+  author_role: "Backend & Systems Architect"
+  author_bio: "초고속 응답 시스템 설계와 확장 가능한 데이터 파이프라인을 구축합니다. 기술적 의사결정의 이유와 Trade-off를 깊이 있게 기록합니다."
+  author_avatar: "/images/profile.jpg"
+  banner_image: "/images/banner.jpg"
+  github_url: "https://github.com/daniel-dataflow"
+  email: "daniel.dataflow@gmail.com"
 
-  # 2. 글 메타데이터 커스텀 (단어수 삭제 / 읽는시간 및 조회수 활성화)
-  article:
-    showDate: true
-    showReadingTime: true
-    showWordCount: false      # ❌ '700 단어수' 표시 제거
-    showViews: true          # ⭕ 조회수(Views) 카운터 활성화
-    showLikes: false
-    showTableOfContents: true # 상세글 오른쪽 목차 고정
-    showTaxonomies: true     # 카테고리/태그 뱃지 표시
-    showAuthor: false
+  # 네이버 블로그 위젯 설정
+  widgets:
+    show_profile: true
+    show_categories: true
+    show_recent_posts: true
+    show_tags: true
+    show_search: true
+    show_stats: true
 
-  # 우측/상단 검색 및 기능 활성화
-  enableSearch: true
+  # 포스트 설정
+  ShowReadingTime: true
+  ShowShareButtons: true
+  ShowPostNavLinks: true
+  ShowBreadCrumbs: true
+  ShowCodeCopyButtons: true
+  ShowWordCount: true
+  ShowToc: true
 
-# 3. 상단 메뉴바: 카테고리 및 프로젝트별 즉시 이동
+# 상단 GNB 메뉴바
 menu:
   main:
-    - identifier: all-posts
-      name: "전체 글"
-      url: /posts/
+    - identifier: home
+      name: "홈"
+      url: /
       weight: 10
     - identifier: picksafe
-      name: "PickSafe"
+      name: "PickSafe DevLog"
       url: /posts/picksafe/
       weight: 20
     - identifier: categories
@@ -55,10 +52,6 @@ menu:
       url: /categories/
       weight: 30
     - identifier: tags
-      name: "태그"
+      name: "태그 모음"
       url: /tags/
       weight: 40
-    - identifier: search
-      name: "검색"
-      url: /search/
-      weight: 50

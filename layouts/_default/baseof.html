@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  {{ partial "head.html" . }}
+</head>
+<body class="nb-body">
+  {{ partial "header.html" . }}
+
+  <div class="nb-layout-container">
+    <div class="nb-layout-grid">
+      <!-- 좌측 사이드바 (260px) -->
+      {{ partial "sidebar.html" . }}
+
+      <!-- 우측 본문 영역 (780px) -->
+      <main class="nb-main-content" id="main-content">
+        {{ block "main" . }}{{ end }}
+      </main>
+    </div>
+  </div>
+
+  {{ partial "footer.html" . }}
+</body>
+</html>

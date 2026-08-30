@@ -1,0 +1,42 @@
+<!-- Naver Blog Top Global Navigation Bar (GNB) -->
+<header class="nb-header">
+  <div class="nb-gnb-container">
+    <div class="nb-gnb-left">
+      <a href="/" class="nb-brand-logo">
+        <span class="nb-brand-badge">TECH</span>
+        <span class="nb-brand-text">{{ .Site.Title }}</span>
+      </a>
+    </div>
+    <nav class="nb-gnb-menu">
+      {{ range .Site.Menus.main }}
+      <a href="{{ .URL }}" class="nb-menu-item {{ if or (eq $.RelPermalink .URL) (hasPrefix $.RelPermalink .URL) }}active{{ end }}">
+        {{ .Name }}
+      </a>
+      {{ end }}
+    </nav>
+    <div class="nb-gnb-right">
+      <a href="{{ .Site.Params.github_url }}" target="_blank" rel="noopener noreferrer" class="nb-social-btn" title="GitHub Repository">
+        <i class="fa-brands fa-github"></i> <span>GitHub</span>
+      </a>
+      <a href="/index.xml" class="nb-social-btn rss" title="RSS Feed">
+        <i class="fa-solid fa-rss"></i> <span>RSS</span>
+      </a>
+    </div>
+  </div>
+</header>
+
+<!-- Blog Skin Banner Header -->
+<div class="nb-banner-wrapper">
+  <div class="nb-banner-content">
+    <div class="nb-banner-info">
+      <div class="nb-banner-category">PickSafe Engineering Archive</div>
+      <h1 class="nb-banner-title"><a href="/">{{ .Site.Title }}</a></h1>
+      <p class="nb-banner-subtitle">{{ .Site.Params.subtitle }}</p>
+    </div>
+    <div class="nb-banner-actions">
+      <a href="{{ .Site.Params.github_url }}" target="_blank" class="nb-banner-neighbor-btn">
+        <i class="fa-solid fa-user-plus"></i> 이웃추가 / 팔로우
+      </a>
+    </div>
+  </div>
+</div>

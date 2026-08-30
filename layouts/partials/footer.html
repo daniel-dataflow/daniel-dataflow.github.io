@@ -1,0 +1,25 @@
+<footer class="nb-footer">
+  <div class="nb-footer-container">
+    <div class="nb-footer-left">
+      <p class="nb-copy">&copy; {{ now.Format "2006" }} <a href="/">{{ .Site.Title }}</a>. All rights reserved.</p>
+      <p class="nb-powered">Powered by <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> · Naver Blog Engine Theme by Daniel</p>
+    </div>
+    <div class="nb-footer-right">
+      <a href="{{ .Site.Params.github_url }}" target="_blank" rel="noopener noreferrer" class="nb-f-link">
+        <i class="fa-brands fa-github"></i> GitHub
+      </a>
+      <a href="/index.xml" class="nb-f-link">
+        <i class="fa-solid fa-rss"></i> RSS
+      </a>
+      <button id="nb-back-to-top" class="nb-top-btn" title="맨 위로">
+        <i class="fa-solid fa-arrow-up"></i> TOP
+      </button>
+    </div>
+  </div>
+</footer>
+
+<!-- Toast Message Container -->
+<div id="nb-toast" class="nb-toast"></div>
+
+<!-- JavaScript -->
+<script src="/js/naver_blog.js"></script>
