@@ -27,9 +27,15 @@
       </div>
       <div class="nb-stat-item">
         <span class="nb-stat-label">카테고리</span>
-        {{ $catCount := len .Site.Taxonomies.categories }}
-        {{ if eq $catCount 0 }}{{ $catCount = 1 }}{{ end }}
-        <span class="nb-stat-val">{{ $catCount }}개</span>
+        {{ $subSections := where .Site.Pages "Section" "posts" }}
+        {{ $secCount := 0 }}
+        {{ range $subSections }}
+          {{ if and .IsSection (ne .Section "") }}
+            {{ $secCount = add $secCount 1 }}
+          {{ end }}
+        {{ end }}
+        {{ if eq $secCount 0 }}{{ $secCount = 1 }}{{ end }}
+        <span class="nb-stat-val">{{ $secCount }}개</span>
       </div>
     </div>
   </div>
@@ -42,7 +48,7 @@
     </div>
   </div>
 
-  <!-- 3. 카테고리 메뉴 위젯 -->
+  <!-- 3. 카테고리 메뉴 위젯 (동적 서브섹션 및 카테고리) -->
   <div class="nb-widget nb-category-widget">
     <div class="nb-widget-header">
       <i class="fa-regular fa-folder-open"></i> 카테고리
@@ -54,21 +60,32 @@
           <span class="nb-count">({{ len .Site.RegularPages }})</span>
         </a>
       </li>
-      <li class="nb-category-item {{ if hasPrefix .RelPermalink "/posts/picksafe" }}active{{ end }}">
-        <a href="/posts/picksafe/" class="nb-category-link">
-          <i class="fa-regular fa-folder"></i> PickSafe
-          <span class="nb-count">({{ len (where .Site.RegularPages "Section" "posts") }})</span>
-        </a>
-      </li>
-      {{ range $name, $taxonomy := .Site.Taxonomies.categories }}
-      {{ if ne (lower $name) "picksafe" }}
-      <li class="nb-category-item {{ if eq $.RelPermalink (printf "/categories/%s/" ($name | urlize)) }}active{{ end }}">
-        <a href="/categories/{{ $name | urlize }}/" class="nb-category-link">
-          <i class="fa-regular fa-folder"></i> {{ $name | humanize }}
-          <span class="nb-count">({{ $taxonomy.Count }})</span>
-        </a>
-      </li>
+      {{ range (where .Site.Pages "Section" "posts") }}
+        {{ if and .IsSection (ne .Section "") }}
+        <li class="nb-category-item {{ if hasPrefix $.RelPermalink .RelPermalink }}active{{ end }}">
+          <a href="{{ .RelPermalink }}" class="nb-category-link">
+            <i class="fa-regular fa-folder"></i> {{ .Title }}
+            <span class="nb-count">({{ len .RegularPages }})</span>
+          </a>
+        </li>
+        {{ end }}
       {{ end }}
+      {{ range $name, $taxonomy := .Site.Taxonomies.categories }}
+        {{ $catSlug := ($name | urlize) }}
+        {{ $isSectionAlready := false }}
+        {{ range (where $.Site.Pages "Section" "posts") }}
+          {{ if and .IsSection (eq (lower .Title) (lower $name)) }}
+            {{ $isSectionAlready = true }}
+          {{ end }}
+        {{ end }}
+        {{ if not $isSectionAlready }}
+        <li class="nb-category-item {{ if eq $.RelPermalink (printf "/categories/%s/" $catSlug) }}active{{ end }}">
+          <a href="/categories/{{ $catSlug }}/" class="nb-category-link">
+            <i class="fa-regular fa-folder"></i> {{ $name | humanize }}
+            <span class="nb-count">({{ $taxonomy.Count }})</span>
+          </a>
+        </li>
+        {{ end }}
       {{ end }}
     </ul>
   </div>
