@@ -49,7 +49,6 @@ async function authenticateAdmin() {
     return;
   }
 
-  // Verify token by making a lightweight request
   try {
     const res = await fetch(`https://api.github.com/user`, {
       headers: {
@@ -96,7 +95,6 @@ async function ghRequest(endpoint, options = {}) {
   return res;
 }
 
-// Helper to decode Base64 UTF-8 string
 function decodeBase64Utf8(base64Str) {
   try {
     const binString = atob(base64Str.replace(/\s/g, ''));
@@ -107,7 +105,6 @@ function decodeBase64Utf8(base64Str) {
   }
 }
 
-// Helper to encode UTF-8 to Base64
 function encodeBase64Utf8(str) {
   const bytes = new TextEncoder().encode(str);
   const binString = Array.from(bytes, (byte) => String.fromCodePoint(byte)).join('');
@@ -184,7 +181,6 @@ async function loadPublishedPosts() {
   allPublishedPosts = [];
 
   try {
-    // Traverse each category directory
     for (const cat of allCategories) {
       const res = await ghRequest(`contents/content/posts/${cat.slug}`);
       if (res.status === 200) {
@@ -249,7 +245,6 @@ function filterPostsList() {
 function switchSidebarTab(tab) {
   const tabPosts = document.getElementById('tabPosts');
   const tabCats = document.getElementById('tabCategories');
-  const listContainer = document.getElementById('sidebarItemsList');
 
   if (tab === 'posts') {
     tabPosts.classList.add('active');
@@ -343,7 +338,6 @@ async function publishPostToGitHub() {
     return;
   }
 
-  // Extract or generate filename
   let filename = currentEditingPost ? currentEditingPost.filename : '';
   if (!filename) {
     const titleMatch = content.match(/title:\s*["']?(.*?)["']?\s*$/m);
@@ -365,7 +359,6 @@ async function publishPostToGitHub() {
   btn.disabled = true;
 
   try {
-    // Get existing SHA if file exists
     let sha = currentEditingPost ? currentEditingPost.sha : null;
     if (!sha) {
       const checkRes = await ghRequest(`contents/${targetPath}`);
@@ -671,7 +664,6 @@ async function uploadBannerToGitHub(event) {
       const base64Content = reader.result.split(',')[1];
       const targetPath = 'static/images/banner.jpg';
 
-      // Check SHA
       let sha = null;
       const check = await ghRequest(`contents/${targetPath}`);
       if (check.status === 200) {
@@ -927,7 +919,7 @@ ${notes}
   }
 }
 
-// ─── 10. Markdown Rendering & Toolbar ───
+// ─── 10. Robust Markdown & Frontmatter Live Preview ───
 let previewTimer = null;
 function handleEditorChange() {
   isEditorDirty = true;
@@ -949,17 +941,38 @@ function renderLivePreview() {
     return;
   }
 
-  // Remove frontmatter for preview
+  // 1. Robust Frontmatter Extraction (supports CRLF, LF, trailing spaces)
   let body = raw;
   let title = '';
-  let cat = '';
-  const fm = raw.match(/^---\n([\s\S]*?)\n---\n/);
-  if (fm) {
-    body = raw.replace(fm[0], '');
-    const tm = fm[1].match(/title:\s*["']?(.*?)["']?\s*$/m);
-    const cm = fm[1].match(/category:\s*["']?(.*?)["']?\s*$/m);
-    if (tm) title = tm[1];
-    if (cm) cat = cm[1];
+  let category = '';
+  let date = '';
+  let tags = [];
+
+  const fmRegex = /^---\r?\n([\s\S]*?)\r?\n---\s*(\r?\n)?/;
+  const fmMatch = raw.match(fmRegex);
+
+  if (fmMatch) {
+    body = raw.substring(fmMatch[0].length).trim();
+    const fmContent = fmMatch[1];
+
+    const titleMatch = fmContent.match(/title:\s*["']?(.*?)["']?\s*$/m);
+    if (titleMatch) title = titleMatch[1].trim();
+
+    const catMatch = fmContent.match(/categor(?:y|ies):\s*(?:\[\s*["']?(.*?)["']?\s*\]|["']?(.*?)["']?)\s*$/m);
+    if (catMatch) category = (catMatch[1] || catMatch[2] || '').trim();
+
+    const dateMatch = fmContent.match(/date:\s*["']?(.*?)["']?\s*$/m);
+    if (dateMatch) date = dateMatch[1].trim();
+
+    const tagMatch = fmContent.match(/tags:\s*\[(.*?)\]/m);
+    if (tagMatch) {
+      tags = tagMatch[1].split(',').map(t => t.replace(/["'\s]/g, '').trim()).filter(Boolean);
+    }
+  }
+
+  // Fallback category from dropdown if missing
+  if (!category) {
+    category = document.getElementById('postCategorySelect')?.value || 'PickSafe';
   }
 
   if (typeof marked !== 'undefined') {
@@ -974,17 +987,44 @@ function renderLivePreview() {
       }
     });
 
+    // SmartEditor ONE Header Structure
     let headerHtml = '';
     if (title) {
       headerHtml = `
-        <div style="border-bottom: 1px solid #e2e8f0; padding-bottom: 16px; margin-bottom: 20px;">
-          <span style="font-size: 0.8rem; font-weight: 700; color: #03c75a;">${escapeHtml(cat || 'Tech Blog')}</span>
-          <h1 style="font-size: 1.6rem; font-weight: 800; color: #111; margin-top: 6px;">${escapeHtml(title)}</h1>
+        <div class="nb-smart-header">
+          <div class="nb-preview-cat-badge">${escapeHtml(category)}</div>
+          <h1 class="nb-preview-main-title">${escapeHtml(title)}</h1>
+          <div class="nb-preview-meta-row">
+            <div class="nb-meta-author-box">
+              <img src="/images/profile.jpg" class="nb-meta-avatar" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=Daniel&background=03c75a&color=fff&size=64';">
+              <div class="nb-meta-names">
+                <span class="nb-meta-author-name">Daniel</span>
+                <span class="nb-meta-date">${escapeHtml(date || new Date().toISOString().substring(0, 10))}</span>
+              </div>
+            </div>
+            <div class="nb-meta-actions-box">
+              <span class="nb-meta-pill"><i class="fa-regular fa-heart" style="color: #03c75a;"></i> 1</span>
+              <span class="nb-meta-pill"><i class="fa-regular fa-comment-dots"></i> 0</span>
+            </div>
+          </div>
+          <div class="nb-smart-divider"></div>
         </div>
       `;
     }
 
-    viewport.innerHTML = headerHtml + marked.parse(body);
+    let parsedBody = marked.parse(body);
+
+    // Tags Footer
+    let tagsHtml = '';
+    if (tags.length > 0) {
+      tagsHtml = `
+        <div class="nb-preview-tags-wrap">
+          ${tags.map(t => `<span class="nb-preview-tag-pill">#${escapeHtml(t)}</span>`).join('')}
+        </div>
+      `;
+    }
+
+    viewport.innerHTML = `<div class="nb-preview-sheet">${headerHtml}<div class="nb-preview-content">${parsedBody}</div>${tagsHtml}</div>`;
 
     // Render Mermaid diagrams
     if (typeof mermaid !== 'undefined') {
