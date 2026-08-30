@@ -1,48 +1,22 @@
 baseURL: "https://daniel-dataflow.github.io/"
-languageCode: "ko-kr"
-title: "Daniel Tech Log"
-theme: "PaperMod"
-
-paginate: 8
+languageCode: "ko"
+title: "Daniel Tech"
+theme: "blowfish"
 
 params:
-  env: production
-  title: "Daniel Tech Log"
-  description: "PickSafe 아키텍처 및 기술 의사결정 아카이브"
-  author: "Daniel"
-  defaultTheme: auto
-  disableThemeToggle: false
+  colorScheme: "blowfish" # 깔끔한 모던 블루/화이트 톤
+  defaultBackgroundImage: "img/default-banner.png"
+  
+  # 네이버 D2 스타일의 메인 레이아웃 세팅
+  homepage:
+    layout: "custom"
+    showHero: true
+    heroStyle: "big" # 상단 넓은 배너
+    showRecent: true
+    showRecentItems: 6
+    cardView: true # 카드형 목록
 
-  # ❌ 휑하던 프로필 모드 끄기 ➔ 메인 접속 시 바로 최신 글 목록 출력
-  profileMode:
-    enabled: false
-
-  # 기사 카드 옵션 및 기능 활성화
-  ShowReadingTime: true
-  ShowShareButtons: false
-  ShowPostNavLinks: true
-  ShowBreadCrumbs: true
-  ShowCodeCopyButtons: true
-  ShowWordCount: true
-  ShowToc: true
-  TocOpen: true
-
-# 상단 메뉴바 (카테고리/태그 바로가기)
-menu:
-  main:
-    - identifier: picksafe
-      name: "PickSafe DevLog"
-      url: /posts/picksafe/
-      weight: 10
-    - identifier: tags
-      name: "Tags"
-      url: /tags/
-      weight: 20
-    - identifier: categories
-      name: "Categories"
-      url: /categories/
-      weight: 30
-    - identifier: search
-      name: "Search"
-      url: /search/
-      weight: 40
+  # 우측 사이드바 활성화
+  article:
+    showTableOfContents: true
+    showAuthor: true
