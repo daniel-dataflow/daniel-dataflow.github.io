@@ -876,6 +876,27 @@ function openAiDraftModal() {
   const savedPrompt = localStorage.getItem('gemini_prompt_template') || DEFAULT_GEMINI_PROMPT;
   const promptInput = document.getElementById('geminiPromptTemplateInput');
   if (promptInput) promptInput.value = savedPrompt;
+
+  // Auto-detect editor text context
+  const editorText = (document.getElementById('markdownEditor')?.value || '').trim();
+  const contextTextEl = document.getElementById('aiEditorContextText');
+  const extraLabel = document.getElementById('aiExtraPromptLabel');
+
+  if (editorText) {
+    if (contextTextEl) {
+      contextTextEl.innerHTML = `📄 <b>현재 에디터 본문(총 ${editorText.length.toLocaleString()}자)</b>이 AI 생성 시 자동 참조됩니다.`;
+    }
+    if (extraLabel) {
+      extraLabel.textContent = '💬 추가 요청사항 / 강조할 포인트 (선택 사항 - 비워두셔도 자동 작성됩니다):';
+    }
+  } else {
+    if (contextTextEl) {
+      contextTextEl.innerHTML = `💡 에디터가 비어 있습니다. 아래에 기술 노트나 주제를 입력해 주세요.`;
+    }
+    if (extraLabel) {
+      extraLabel.textContent = '📝 참조할 개발 노트 / 기술 요약 내용:';
+    }
+  }
 }
 
 function closeAiDraftModal() {
@@ -913,23 +934,34 @@ function resetAiPromptTemplate() {
 }
 
 async function generateAiDraftWithGemini() {
-  const apiKey = document.getElementById('geminiApiKeyInput').value.trim();
+  const apiKey = (document.getElementById('geminiApiKeyInput')?.value || '').trim();
   const customTemplate = (document.getElementById('geminiPromptTemplateInput')?.value || '').trim() || DEFAULT_GEMINI_PROMPT;
-  const notes = document.getElementById('aiSourceNotes').value.trim();
+  const extraNotes = (document.getElementById('aiSourceNotes')?.value || '').trim();
+  const editorText = (document.getElementById('markdownEditor')?.value || '').trim();
   const statusEl = document.getElementById('aiDraftStatus');
 
   if (!apiKey) {
     alert('Gemini API Key를 입력해 주세요.');
     return;
   }
-  if (!notes) {
-    alert('참조할 기술 노트/문서 내용을 입력해 주세요.');
+
+  // Combine active editor content + optional extra notes
+  let combinedSource = '';
+  if (editorText) {
+    combinedSource = `[현재 에디터 본문 내용]:\n${editorText}`;
+    if (extraNotes) {
+      combinedSource += `\n\n[추가 요청사항 및 지시어]:\n${extraNotes}`;
+    }
+  } else if (extraNotes) {
+    combinedSource = extraNotes;
+  } else {
+    alert('에디터에 본문 글이 없거나 참조할 노트가 없습니다. 에디터에 글을 작성하거나 추가 내용을 입력해 주세요.');
     return;
   }
 
   localStorage.setItem('gemini_api_key', apiKey);
   localStorage.setItem('gemini_prompt_template', customTemplate);
-  statusEl.textContent = '🤖 Gemini 2.5 Flash가 글을 작성 중입니다...';
+  statusEl.textContent = '🤖 Gemini가 현재 본문을 바탕으로 글을 재구성 중입니다...';
 
   const category = document.getElementById('postCategorySelect').value || 'PickSafe';
   const dateStr = new Date().toISOString().replace('T', ' ').substring(0, 19);
@@ -938,11 +970,10 @@ async function generateAiDraftWithGemini() {
   let finalPrompt = customTemplate
     .replace(/\{\{date\}\}/g, dateStr)
     .replace(/\{\{category\}\}/g, category)
-    .replace(/\{\{notes\}\}/g, notes);
+    .replace(/\{\{notes\}\}/g, combinedSource);
 
-  // If template doesn't have {{notes}}, append notes at the end
   if (!customTemplate.includes('{{notes}}')) {
-    finalPrompt += `\n\n[원본 개발 노트]:\n${notes}\n`;
+    finalPrompt += `\n\n[원본 개발 노트 및 요청사항]:\n${combinedSource}\n`;
   }
 
   try {
@@ -960,7 +991,7 @@ async function generateAiDraftWithGemini() {
       document.getElementById('markdownEditor').value = draft;
       handleEditorChange();
       closeAiDraftModal();
-      alert('✨ AI 초안 작성이 완료되었습니다! 에디터에서 내용을 다듬어 보세요.');
+      alert('✨ 에디터 본문 기반 AI 재구성이 완료되었습니다! 에디터에서 내용을 확인해 보세요.');
     } else {
       const err = await res.json();
       alert('AI 생성 실패: ' + (err.error?.message || res.statusText));
