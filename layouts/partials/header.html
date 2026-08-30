@@ -29,7 +29,7 @@
 <div class="nb-banner-wrapper">
   <div class="nb-banner-content">
     <div class="nb-banner-info">
-      <div class="nb-banner-category">PickSafe Engineering Archive</div>
+      <div class="nb-banner-category">{{ .Site.Params.banner_badge | default "Engineering & Architecture Archive" }}</div>
       <h1 class="nb-banner-title"><a href="/">{{ .Site.Title }}</a></h1>
       <p class="nb-banner-subtitle">{{ .Site.Params.subtitle }}</p>
     </div>
