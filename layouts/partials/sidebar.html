@@ -27,7 +27,9 @@
       </div>
       <div class="nb-stat-item">
         <span class="nb-stat-label">카테고리</span>
-        <span class="nb-stat-val">{{ len .Site.Taxonomies.categories }}개</span>
+        {{ $catCount := len .Site.Taxonomies.categories }}
+        {{ if eq $catCount 0 }}{{ $catCount = 1 }}{{ end }}
+        <span class="nb-stat-val">{{ $catCount }}개</span>
       </div>
     </div>
   </div>
@@ -60,7 +62,7 @@
       </li>
       {{ range $name, $taxonomy := .Site.Taxonomies.categories }}
       {{ if ne (lower $name) "picksafe" }}
-      <li class="nb-category-item">
+      <li class="nb-category-item {{ if eq $.RelPermalink (printf "/categories/%s/" ($name | urlize)) }}active{{ end }}">
         <a href="/categories/{{ $name | urlize }}/" class="nb-category-link">
           <i class="fa-regular fa-folder"></i> {{ $name | humanize }}
           <span class="nb-count">({{ $taxonomy.Count }})</span>

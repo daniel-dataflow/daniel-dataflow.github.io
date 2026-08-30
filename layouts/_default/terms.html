@@ -1,0 +1,84 @@
+{{ define "main" }}
+<div class="nb-content-card">
+  <!-- 카테고리/태그 목록 헤더 -->
+  <div class="nb-list-header">
+    <div class="nb-list-title-wrap">
+      <h2 class="nb-list-title">
+        {{ if eq .Data.Plural "categories" }}
+          <i class="fa-solid fa-folder-tree"></i> 카테고리 전체보기
+        {{ else }}
+          <i class="fa-solid fa-tags"></i> 태그 모음
+        {{ end }}
+      </h2>
+      <span class="nb-list-badge">총 {{ len .Data.Terms }}개의 {{ if eq .Data.Plural "categories" }}분류{{ else }}태그{{ end }}</span>
+    </div>
+  </div>
+
+  {{ if eq .Data.Plural "categories" }}
+  <!-- 카테고리 그리드 뷰 -->
+  <div class="nb-category-grid">
+    <!-- 기본 PickSafe DevLog 섹션 카드 (항상 표시) -->
+    {{ $picksafePages := where .Site.RegularPages "Section" "posts" }}
+    <div class="nb-cat-card">
+      <div class="nb-cat-card-header">
+        <div class="nb-cat-icon"><i class="fa-solid fa-folder"></i></div>
+        <div class="nb-cat-info">
+          <h3 class="nb-cat-name"><a href="/posts/picksafe/">PickSafe DevLog</a></h3>
+          <p class="nb-cat-desc">PickSafe 프로젝트 의사결정 및 개발일지 아카이브</p>
+        </div>
+        <span class="nb-cat-badge">{{ len $picksafePages }}개의 포스트</span>
+      </div>
+      <ul class="nb-cat-post-list">
+        {{ range first 4 $picksafePages }}
+        <li>
+          <a href="{{ .Permalink }}">{{ .Title }}</a>
+          <span class="nb-cat-post-date">{{ .Date.Format "01.02" }}</span>
+        </li>
+        {{ end }}
+      </ul>
+      <div class="nb-cat-card-footer">
+        <a href="/posts/picksafe/" class="nb-cat-view-all">전체보기 &rarr;</a>
+      </div>
+    </div>
+
+    <!-- 동적 카테고리 카드들 -->
+    {{ range $name, $taxonomy := .Data.Terms }}
+    {{ if ne (lower $name) "picksafe" }}
+    <div class="nb-cat-card">
+      <div class="nb-cat-card-header">
+        <div class="nb-cat-icon"><i class="fa-solid fa-folder-open"></i></div>
+        <div class="nb-cat-info">
+          <h3 class="nb-cat-name"><a href="{{ $taxonomy.Page.Permalink }}">{{ $name | humanize }}</a></h3>
+          <p class="nb-cat-desc">{{ $name | humanize }} 관련 기술 글</p>
+        </div>
+        <span class="nb-cat-badge">{{ $taxonomy.Count }}개의 포스트</span>
+      </div>
+      <ul class="nb-cat-post-list">
+        {{ range first 4 $taxonomy.Pages }}
+        <li>
+          <a href="{{ .Permalink }}">{{ .Title }}</a>
+          <span class="nb-cat-post-date">{{ .Date.Format "01.02" }}</span>
+        </li>
+        {{ end }}
+      </ul>
+      <div class="nb-cat-card-footer">
+        <a href="{{ $taxonomy.Page.Permalink }}" class="nb-cat-view-all">전체보기 &rarr;</a>
+      </div>
+    </div>
+    {{ end }}
+    {{ end }}
+  </div>
+
+  {{ else }}
+  <!-- 태그 클라우드 큰 뷰 -->
+  <div class="nb-tag-cloud-large">
+    {{ range $name, $taxonomy := .Data.Terms }}
+    <a href="{{ $taxonomy.Page.Permalink }}" class="nb-tag-pill-large">
+      <span class="nb-tag-name">#{{ $name }}</span>
+      <span class="nb-tag-num">{{ $taxonomy.Count }}</span>
+    </a>
+    {{ end }}
+  </div>
+  {{ end }}
+</div>
+{{ end }}

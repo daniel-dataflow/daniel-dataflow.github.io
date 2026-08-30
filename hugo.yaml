@@ -5,6 +5,12 @@ title: "Daniel Tech Log"
 pagination:
   pagerSize: 8
 
+taxonomies:
+  category: categories
+  categories: categories
+  tag: tags
+  tags: tags
+
 params:
   env: production
   title: "Daniel Tech Log"
