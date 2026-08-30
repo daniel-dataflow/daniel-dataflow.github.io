@@ -1,6 +1,6 @@
 baseURL: "https://daniel-dataflow.github.io/"
 languageCode: "ko-kr"
-title: "Daniel Tech Log"
+title: "Daniel Tech Blog"
 
 pagination:
   pagerSize: 8
@@ -13,7 +13,7 @@ taxonomies:
 
 params:
   env: production
-  title: "Daniel Tech Log"
+  title: "Daniel Tech Blog"
   subtitle: "PickSafe 아키텍처 및 백엔드 엔지니어링 아카이브"
   description: "고성능 백엔드 아키텍처, 시스템 최적화, 그리고 실전 엔지니어링 문제 해결 기록소"
   author: "Daniel"
@@ -22,7 +22,7 @@ params:
   author_avatar: "/images/profile.jpg"
   banner_image: "/images/banner.jpg"
   github_url: "https://github.com/daniel-dataflow"
-  email: "daniel.dataflow@gmail.com"
+  email: "daniel.han.developer@gmail.com"
 
   # 네이버 블로그 위젯 설정
   widgets:
@@ -50,7 +50,7 @@ menu:
       url: /
       weight: 10
     - identifier: picksafe
-      name: "PickSafe DevLog"
+      name: "PickSafe"
       url: /posts/picksafe/
       weight: 20
     - identifier: categories

@@ -17,14 +17,14 @@
   {{ if eq .Data.Plural "categories" }}
   <!-- 카테고리 그리드 뷰 -->
   <div class="nb-category-grid">
-    <!-- 기본 PickSafe DevLog 섹션 카드 (항상 표시) -->
+    <!-- 기본 PickSafe섹션 카드 (항상 표시) -->
     {{ $picksafePages := where .Site.RegularPages "Section" "posts" }}
     <div class="nb-cat-card">
       <div class="nb-cat-card-header">
         <div class="nb-cat-icon"><i class="fa-solid fa-folder"></i></div>
         <div class="nb-cat-info">
-          <h3 class="nb-cat-name"><a href="/posts/picksafe/">PickSafe DevLog</a></h3>
-          <p class="nb-cat-desc">PickSafe 프로젝트 의사결정 및 개발일지 아카이브</p>
+          <h3 class="nb-cat-name"><a href="/posts/picksafe/">PickSafe</a></h3>
+          <p class="nb-cat-desc">프로젝트 의사결정 및 개발일지 아카이브</p>
         </div>
         <span class="nb-cat-badge">{{ len $picksafePages }}개의 포스트</span>
       </div>
