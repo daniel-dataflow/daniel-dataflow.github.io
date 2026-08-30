@@ -838,20 +838,83 @@ async function uploadInArticleImageToGitHub(file) {
   }
 }
 
-// ─── 9. AI Draft Generator Modal ───
+// ─── 9. AI Draft Generator Modal & Prompt Template Settings ───
+const DEFAULT_GEMINI_PROMPT = `너는 스타트업의 수석 소프트웨어 엔지니어이자 전문 테크 블로그 에디터야.
+아래 제공되는 개발 노트/의사결정 내용을 바탕으로, 대외 개발자 커뮤니티와 시니어 면접관이 감탄할 만한 "깊이 있는 엔지니어링 기술 블로그 포스팅"을 작성해 줘.
+
+[필수 규칙 1: Frontmatter 규격 - 맨 위와 아래의 '---' 필수]
+---
+title: "흥미를 유발하는 엔지니어링 중심 제목"
+date: "{{date}}"
+categories: ["{{category}}"]
+category: "{{category}}"
+tags: ["Architecture", "Backend", "Optimization"]
+---
+
+[필수 규칙 2: 글의 구성과 서식]
+- 🎯 문제 정의: 현실적인 문제와 왜 이 기술적 결정이 필요했는지의 배경
+- 🏗️ 핵심 아키텍처 및 다이어그램: Mermaid 다이어그램(\`\`\`mermaid ... \`\`\`)을 포함하여 그래픽으로 렌더링되게 할 것!
+- ⚖️ 대안 비교 및 Trade-off 분석 (표 또는 깔끔한 리스트)
+- 🚀 구현 핵심 코드 및 트러블슈팅 경험 (코드 스니펫)
+- 💡 도입 성과 및 엔지니어링 교훈
+
+[원본 개발 노트]:
+{{notes}}
+`;
+
 function openAiDraftModal() {
   const modal = document.getElementById('aiModal');
   modal.style.display = 'flex';
+
   const savedKey = localStorage.getItem('gemini_api_key') || '';
-  document.getElementById('geminiApiKeyInput').value = savedKey;
+  const keyInput = document.getElementById('geminiApiKeyInput');
+  if (keyInput) keyInput.value = savedKey;
+
+  const badge = document.getElementById('apiKeySaveBadge');
+  if (badge) badge.textContent = savedKey ? '✓ 브라우저에 저장됨' : '';
+
+  const savedPrompt = localStorage.getItem('gemini_prompt_template') || DEFAULT_GEMINI_PROMPT;
+  const promptInput = document.getElementById('geminiPromptTemplateInput');
+  if (promptInput) promptInput.value = savedPrompt;
 }
 
 function closeAiDraftModal() {
   document.getElementById('aiModal').style.display = 'none';
 }
 
+function saveGeminiApiKeyAuto(val) {
+  const cleanKey = val.trim();
+  localStorage.setItem('gemini_api_key', cleanKey);
+  const badge = document.getElementById('apiKeySaveBadge');
+  if (badge) badge.textContent = cleanKey ? '✓ 브라우저에 저장됨' : '';
+}
+
+function saveAiPromptSettingsManual() {
+  const key = (document.getElementById('geminiApiKeyInput')?.value || '').trim();
+  const prompt = (document.getElementById('geminiPromptTemplateInput')?.value || '').trim();
+
+  if (!prompt) {
+    alert('프롬프트 템플릿 내용을 입력해 주세요.');
+    return;
+  }
+
+  localStorage.setItem('gemini_api_key', key);
+  localStorage.setItem('gemini_prompt_template', prompt);
+  alert('✨ Gemini API Key와 커스텀 프롬프트 템플릿이 브라우저에 안전하게 저장되었습니다!');
+}
+
+function resetAiPromptTemplate() {
+  if (!confirm('정말로 AI 프롬프트 템플릿을 기본 권장 템플릿으로 복원하시겠습니까?')) return;
+
+  const promptInput = document.getElementById('geminiPromptTemplateInput');
+  if (promptInput) promptInput.value = DEFAULT_GEMINI_PROMPT;
+  localStorage.setItem('gemini_prompt_template', DEFAULT_GEMINI_PROMPT);
+  alert('기본 AI 프롬프트 템플릿으로 복원되었습니다.');
+}
+
 async function generateAiDraftWithGemini() {
   const apiKey = document.getElementById('geminiApiKeyInput').value.trim();
+  const customTemplate = (document.getElementById('geminiPromptTemplateInput')?.value || '').trim() || DEFAULT_GEMINI_PROMPT;
   const notes = document.getElementById('aiSourceNotes').value.trim();
   const statusEl = document.getElementById('aiDraftStatus');
 
@@ -865,40 +928,29 @@ async function generateAiDraftWithGemini() {
   }
 
   localStorage.setItem('gemini_api_key', apiKey);
+  localStorage.setItem('gemini_prompt_template', customTemplate);
   statusEl.textContent = '🤖 Gemini 2.5 Flash가 글을 작성 중입니다...';
 
   const category = document.getElementById('postCategorySelect').value || 'PickSafe';
   const dateStr = new Date().toISOString().replace('T', ' ').substring(0, 19);
 
-  const prompt = `너는 스타트업의 수석 소프트웨어 엔지니어이자 전문 테크 블로그 에디터야.
-아래 제공되는 개발 노트/의사결정 내용을 바탕으로, 대외 개발자 커뮤니티와 시니어 면접관이 감탄할 만한 "깊이 있는 엔지니어링 기술 블로그 포스팅"을 작성해 줘.
+  // Substitute template variables
+  let finalPrompt = customTemplate
+    .replace(/\{\{date\}\}/g, dateStr)
+    .replace(/\{\{category\}\}/g, category)
+    .replace(/\{\{notes\}\}/g, notes);
 
-[필수 규칙 1: Frontmatter 규격 - 맨 위와 아래의 '---' 필수]
----
-title: "흥미를 유발하는 엔지니어링 중심 제목"
-date: "${dateStr}"
-categories: ["${category}"]
-category: "${category}"
-tags: ["Architecture", "Backend", "Optimization"]
----
-
-[필수 규칙 2: 글의 구성과 서식]
-- 🎯 문제 정의: 현실적인 문제와 왜 이 기술적 결정이 필요했는지의 배경
-- 🏗️ 핵심 아키텍처 및 다이어그램: Mermaid 다이어그램(\`\`\`mermaid ... \`\`\`)을 포함하여 그래픽으로 렌더링되게 할 것!
-- ⚖️ 대안 비교 및 Trade-off 분석 (표 또는 깔끔한 리스트)
-- 🚀 구현 핵심 코드 및 트러블슈팅 경험 (코드 스니펫)
-- 💡 도입 성과 및 엔지니어링 교훈
-
-[원본 개발 노트]:
-${notes}
-`;
+  // If template doesn't have {{notes}}, append notes at the end
+  if (!customTemplate.includes('{{notes}}')) {
+    finalPrompt += `\n\n[원본 개발 노트]:\n${notes}\n`;
+  }
 
   try {
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }]
+        contents: [{ parts: [{ text: finalPrompt }] }]
       })
     });
 
