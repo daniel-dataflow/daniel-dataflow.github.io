@@ -1042,11 +1042,10 @@ async function executeCategoryDeletion() {
     cat = { name: name, slug: slug };
   }
 
-  const pat = localStorage.getItem('daniel_gh_pat');
-  const repo = localStorage.getItem('daniel_gh_repo') || 'daniel-dataflow/daniel-dataflow.github.io';
+  const pat = githubPat || localStorage.getItem('gh_admin_pat');
 
   if (!pat) {
-    alert('GitHub PAT 토큰이 설정되지 않았습니다. 우측 상단 [⚙️ 블로그 설정]에서 PAT를 먼저 저장해 주세요.');
+    alert('GitHub 인증 토큰이 없습니다. 다시 로그인해 주세요.');
     return;
   }
 
@@ -1070,7 +1069,7 @@ async function executeCategoryDeletion() {
     // 1. Migrate posts if any
     for (const post of postsInCat) {
       if (!post.path) continue;
-      const fileRes = await fetch(`https://api.github.com/repos/${repo}/contents/${post.path}`, {
+      const fileRes = await fetch(`${API_BASE}/contents/${post.path}`, {
         headers: { Authorization: `token ${pat}`, Accept: 'application/vnd.github.v3+json' }
       });
       if (fileRes.ok) {
@@ -1084,7 +1083,7 @@ async function executeCategoryDeletion() {
 
         // Create in new location
         const b64New = btoa(unescape(encodeURIComponent(updatedContent)));
-        await fetch(`https://api.github.com/repos/${repo}/contents/${newPath}`, {
+        await fetch(`${API_BASE}/contents/${newPath}`, {
           method: 'PUT',
           headers: { Authorization: `token ${pat}`, Accept: 'application/vnd.github.v3+json' },
           body: JSON.stringify({
@@ -1095,7 +1094,7 @@ async function executeCategoryDeletion() {
         });
 
         // Delete old file
-        await fetch(`https://api.github.com/repos/${repo}/contents/${post.path}`, {
+        await fetch(`${API_BASE}/contents/${post.path}`, {
           method: 'DELETE',
           headers: { Authorization: `token ${pat}`, Accept: 'application/vnd.github.v3+json' },
           body: JSON.stringify({
@@ -1109,12 +1108,12 @@ async function executeCategoryDeletion() {
 
     // 2. Delete _index.md of the category
     const indexPath = `content/posts/${slug}/_index.md`;
-    const indexRes = await fetch(`https://api.github.com/repos/${repo}/contents/${indexPath}`, {
+    const indexRes = await fetch(`${API_BASE}/contents/${indexPath}`, {
       headers: { Authorization: `token ${pat}`, Accept: 'application/vnd.github.v3+json' }
     });
     if (indexRes.ok) {
       const indexData = await indexRes.json();
-      await fetch(`https://api.github.com/repos/${repo}/contents/${indexPath}`, {
+      await fetch(`${API_BASE}/contents/${indexPath}`, {
         method: 'DELETE',
         headers: { Authorization: `token ${pat}`, Accept: 'application/vnd.github.v3+json' },
         body: JSON.stringify({
