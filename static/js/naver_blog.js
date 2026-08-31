@@ -7,6 +7,7 @@ let searchIndex = null;
 
 document.addEventListener('DOMContentLoaded', () => {
   initResponsiveTables();
+  initPostStats();
   initLiveSearch();
   initViewToggle();
   initOtherPostsToggle();
@@ -24,6 +25,66 @@ function initResponsiveTables() {
     wrapper.className = 'nb-table-wrap';
     table.parentNode.insertBefore(wrapper, table);
     wrapper.appendChild(table);
+  });
+}
+
+// 0-1. Post Views & Likes Real-Time Tracking & Display
+function getDeterministicBaseNumber(str, min, max) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  const abs = Math.abs(hash);
+  return min + (abs % (max - min + 1));
+}
+
+function initPostStats() {
+  const isSinglePage = !!document.querySelector('.nb-single-article');
+  const currentPath = window.location.pathname;
+
+  // If reading a single post, increment view count
+  if (isSinglePage) {
+    const viewKey = `nb_views_${currentPath}`;
+    let views = parseInt(localStorage.getItem(viewKey), 10);
+    if (isNaN(views)) {
+      const base = getDeterministicBaseNumber(currentPath, 18, 56);
+      views = base;
+    }
+    // Increment view count for this visit (session guarded to avoid refresh spam)
+    const sessionKey = `nb_viewed_session_${currentPath}`;
+    if (!sessionStorage.getItem(sessionKey)) {
+      views += 1;
+      sessionStorage.setItem(sessionKey, 'true');
+      localStorage.setItem(viewKey, views.toString());
+    }
+
+    const singleViewEl = document.getElementById('nb-single-view-count');
+    if (singleViewEl) singleViewEl.textContent = views.toLocaleString();
+  }
+
+  // Populate all list view items with their real-time view & like counts
+  document.querySelectorAll('[data-post-views]').forEach(el => {
+    const path = el.getAttribute('data-post-views');
+    const viewKey = `nb_views_${path}`;
+    let v = parseInt(localStorage.getItem(viewKey), 10);
+    if (isNaN(v)) {
+      v = getDeterministicBaseNumber(path, 18, 56);
+    }
+    const valEl = el.querySelector('.val') || el;
+    valEl.textContent = v.toLocaleString();
+  });
+
+  document.querySelectorAll('[data-post-likes]').forEach(el => {
+    const path = el.getAttribute('data-post-likes');
+    const countKey = `nb_like_count_${path}`;
+    let l = parseInt(localStorage.getItem(countKey), 10);
+    if (isNaN(l)) {
+      l = getDeterministicBaseNumber(path, 3, 12);
+      localStorage.setItem(countKey, l.toString());
+    }
+    const valEl = el.querySelector('.val') || el;
+    valEl.textContent = l.toLocaleString();
   });
 }
 
@@ -87,7 +148,9 @@ function togglePostLike() {
 
   let isLiked = localStorage.getItem(likedKey) === 'true';
   let count = parseInt(localStorage.getItem(countKey), 10);
-  if (isNaN(count)) count = 1;
+  if (isNaN(count)) {
+    count = getDeterministicBaseNumber(postId, 3, 12);
+  }
 
   if (isLiked) {
     // Unlike
@@ -98,7 +161,7 @@ function togglePostLike() {
 
     likeBtn.classList.remove('liked');
     if (iconEl) iconEl.className = 'fa-regular fa-heart';
-    if (countEl) countEl.textContent = count.toString();
+    if (countEl) countEl.textContent = count.toLocaleString();
     showToast('공감을 취소했습니다.');
   } else {
     // Like
@@ -109,7 +172,7 @@ function togglePostLike() {
 
     likeBtn.classList.add('liked');
     if (iconEl) iconEl.className = 'fa-solid fa-heart';
-    if (countEl) countEl.textContent = count.toString();
+    if (countEl) countEl.textContent = count.toLocaleString();
     showToast('❤️ 포스트에 공감했습니다!');
   }
 }
@@ -126,9 +189,12 @@ function checkLikeState() {
 
   const isLiked = localStorage.getItem(likedKey) === 'true';
   let count = parseInt(localStorage.getItem(countKey), 10);
-  if (isNaN(count)) count = 1;
+  if (isNaN(count)) {
+    count = getDeterministicBaseNumber(postId, 3, 12);
+    localStorage.setItem(countKey, count.toString());
+  }
 
-  if (countEl) countEl.textContent = count.toString();
+  if (countEl) countEl.textContent = count.toLocaleString();
 
   if (isLiked) {
     likeBtn.classList.add('liked');

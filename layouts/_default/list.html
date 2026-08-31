@@ -67,10 +67,11 @@
             <div class="nb-author-info">
               <img src="{{ $.Site.Params.author_avatar }}" alt="Daniel" class="nb-mini-avatar" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=Daniel&background=03c75a&color=fff&size=64';">
               <span class="nb-author-name">{{ $.Site.Params.author }}</span>
-              <span class="nb-read-time"><i class="fa-regular fa-clock"></i> {{ .ReadingTime }}분 분량</span>
+              <span class="nb-read-time"><i class="fa-regular fa-clock"></i> {{ .ReadingTime }}분</span>
             </div>
             <div class="nb-post-reactions">
-              <span class="nb-read-time" style="font-size: 0.78rem; color: #94a3b8;"><i class="fa-solid fa-file-lines"></i> {{ .WordCount }}자</span>
+              <span class="nb-post-stat-item" title="조회수" data-post-views="{{ .RelPermalink }}"><i class="fa-regular fa-eye"></i> <span class="val">1</span></span>
+              <span class="nb-post-stat-item" title="공감수" data-post-likes="{{ .RelPermalink }}"><i class="fa-regular fa-heart"></i> <span class="val">1</span></span>
               <a href="{{ .Permalink }}" class="nb-more-btn">본문 읽기 &rarr;</a>
             </div>
           </div>

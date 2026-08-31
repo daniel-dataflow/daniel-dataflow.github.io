@@ -33,7 +33,11 @@
         <img src="{{ .Site.Params.author_avatar }}" alt="{{ .Site.Params.author }}" class="nb-author-avatar-img" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=Daniel&background=03c75a&color=fff&size=64';">
         <div class="nb-meta-author-text">
           <span class="nb-author-name-bold">{{ .Site.Params.author }}</span>
-          <span class="nb-post-publish-date">{{ .Date.Format "2006년 01월 02일 15:04" }}</span>
+          <div class="nb-meta-sub-row" style="display: flex; align-items: center; gap: 8px; font-size: 0.78rem; color: #94a3b8;">
+            <span class="nb-post-publish-date">{{ .Date.Format "2006년 01월 02일 15:04" }}</span>
+            <span>·</span>
+            <span title="조회수"><i class="fa-regular fa-eye"></i> 조회 <span id="nb-single-view-count">1</span></span>
+          </div>
         </div>
       </div>
       <div class="nb-meta-right">
