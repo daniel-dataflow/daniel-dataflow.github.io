@@ -1706,34 +1706,45 @@ a {
 .nb-m-btn-primary {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
   background: var(--nb-green);
   color: #ffffff !important;
-  font-size: 0.78rem;
-  font-weight: 700;
-  padding: 6px 12px;
-  border-radius: 6px;
+  font-size: 0.95rem;
+  border-radius: 8px;
   text-decoration: none;
-  transition: background 0.2s;
-  white-space: nowrap;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(3, 199, 90, 0.25);
 }
 
 .nb-m-btn-primary:hover {
   background: var(--nb-green-hover);
+  transform: translateY(-1px);
 }
 
 .nb-m-btn-sub {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   background: var(--nb-border-light);
   border: 1px solid var(--nb-border);
   color: var(--nb-text-secondary);
-  border-radius: 6px;
-  font-size: 0.85rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
   text-decoration: none;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.nb-m-btn-sub:hover {
+  background: #ffffff;
+  color: var(--nb-green);
+  border-color: var(--nb-green);
+  transform: translateY(-1px);
 }
 
 /* 2. Mobile Horizontal Scrollable Category Chips Slider */
@@ -2704,12 +2715,30 @@ a {
   transform: translateY(-1px);
 }
 
+.nb-like-btn.liked {
+  background: #ffe4e6 !important;
+  border-color: #f43f5e !important;
+  color: #e11d48 !important;
+  box-shadow: 0 4px 14px rgba(225, 29, 72, 0.18) !important;
+}
+
+.nb-like-btn.liked i {
+  color: #e11d48 !important;
+  transform: scale(1.18);
+}
+
+.nb-like-btn.liked .nb-like-count {
+  background: #e11d48 !important;
+  color: #ffffff !important;
+}
+
 .nb-like-count {
   background: #f1f5f9;
   color: #475569;
   font-size: 0.78rem;
   padding: 2px 8px;
   border-radius: 12px;
+  transition: all 0.2s ease;
 }
 
 .nb-author-bottom-card {
@@ -2720,6 +2749,7 @@ a {
   border: 1px solid #e2e8f0;
   border-radius: 12px;
   padding: 20px 24px;
+  margin: 28px 0 !important; /* Generous spacing between cards */
 }
 
 .nb-bot-avatar {

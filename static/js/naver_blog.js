@@ -8,6 +8,8 @@ let searchIndex = null;
 document.addEventListener('DOMContentLoaded', () => {
   initResponsiveTables();
   initLiveSearch();
+  initViewToggle();
+  initOtherPostsToggle();
   initCodeCopyButtons();
   initBackToTop();
   checkLikeState();
@@ -72,7 +74,7 @@ function fallbackCopy(text) {
   document.body.removeChild(textArea);
 }
 
-// 3. Like (공감 ❤️) Toggle
+// 3. Like (공감 ❤️) System with Real-Time Persistence
 function togglePostLike() {
   const likeBtn = document.getElementById('nb-article-like-btn');
   const countEl = document.getElementById('nb-post-like-count');
@@ -80,22 +82,35 @@ function togglePostLike() {
   if (!likeBtn) return;
 
   const postId = window.location.pathname;
-  const storageKey = `nb_like_${postId}`;
-  let isLiked = localStorage.getItem(storageKey) === 'true';
+  const likedKey = `nb_liked_${postId}`;
+  const countKey = `nb_like_count_${postId}`;
 
-  isLiked = !isLiked;
-  localStorage.setItem(storageKey, isLiked ? 'true' : 'false');
+  let isLiked = localStorage.getItem(likedKey) === 'true';
+  let count = parseInt(localStorage.getItem(countKey), 10);
+  if (isNaN(count)) count = 1;
 
   if (isLiked) {
-    likeBtn.classList.add('liked');
-    if (iconEl) iconEl.className = 'fa-solid fa-heart';
-    if (countEl) countEl.textContent = '1';
-    showToast('❤️ 포스트에 공감했습니다!');
-  } else {
+    // Unlike
+    isLiked = false;
+    count = Math.max(0, count - 1);
+    localStorage.setItem(likedKey, 'false');
+    localStorage.setItem(countKey, count.toString());
+
     likeBtn.classList.remove('liked');
     if (iconEl) iconEl.className = 'fa-regular fa-heart';
-    if (countEl) countEl.textContent = '0';
+    if (countEl) countEl.textContent = count.toString();
     showToast('공감을 취소했습니다.');
+  } else {
+    // Like
+    isLiked = true;
+    count += 1;
+    localStorage.setItem(likedKey, 'true');
+    localStorage.setItem(countKey, count.toString());
+
+    likeBtn.classList.add('liked');
+    if (iconEl) iconEl.className = 'fa-solid fa-heart';
+    if (countEl) countEl.textContent = count.toString();
+    showToast('❤️ 포스트에 공감했습니다!');
   }
 }
 
@@ -106,15 +121,21 @@ function checkLikeState() {
   if (!likeBtn) return;
 
   const postId = window.location.pathname;
-  const storageKey = `nb_like_${postId}`;
-  const isLiked = localStorage.getItem(storageKey) === 'true';
+  const likedKey = `nb_liked_${postId}`;
+  const countKey = `nb_like_count_${postId}`;
+
+  const isLiked = localStorage.getItem(likedKey) === 'true';
+  let count = parseInt(localStorage.getItem(countKey), 10);
+  if (isNaN(count)) count = 1;
+
+  if (countEl) countEl.textContent = count.toString();
 
   if (isLiked) {
     likeBtn.classList.add('liked');
     if (iconEl) iconEl.className = 'fa-solid fa-heart';
-    if (countEl) countEl.textContent = '1';
   } else {
-    if (countEl) countEl.textContent = '0';
+    likeBtn.classList.remove('liked');
+    if (iconEl) iconEl.className = 'fa-regular fa-heart';
   }
 }
 
@@ -128,6 +149,57 @@ function toggleToc() {
   content.style.display = isHidden ? 'block' : 'none';
   if (arrow) {
     arrow.className = isHidden ? 'fa-solid fa-chevron-down nb-toc-arrow' : 'fa-solid fa-chevron-right nb-toc-arrow';
+  }
+}
+
+// 5. Other Posts in Category Accordion Toggle
+function initOtherPostsToggle() {
+  const toggleBtn = document.getElementById('nb-other-toggle');
+  const body = document.getElementById('nb-other-posts-body');
+  if (!toggleBtn || !body) return;
+
+  toggleBtn.addEventListener('click', () => {
+    const isClosed = body.style.display === 'none';
+    body.style.display = isClosed ? 'block' : 'none';
+    toggleBtn.innerHTML = isClosed 
+      ? '<span>접기</span> <i class="fa-solid fa-chevron-up"></i>' 
+      : '<span>펼치기</span> <i class="fa-solid fa-chevron-down"></i>';
+  });
+}
+
+// 6. View Mode Toggle (Card vs List) with LocalStorage persistence
+function initViewToggle() {
+  const toggleBtns = document.querySelectorAll('.nb-v-btn');
+  const postsContainer = document.getElementById('nb-posts-list');
+  if (!toggleBtns.length || !postsContainer) return;
+
+  const savedView = localStorage.getItem('nb_blog_view_mode') || 'card';
+  setViewMode(savedView);
+
+  toggleBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const mode = btn.dataset.view;
+      setViewMode(mode);
+      localStorage.setItem('nb_blog_view_mode', mode);
+    });
+  });
+
+  function setViewMode(mode) {
+    toggleBtns.forEach(b => {
+      if (b.dataset.view === mode) {
+        b.classList.add('active');
+      } else {
+        b.classList.remove('active');
+      }
+    });
+
+    if (mode === 'list') {
+      postsContainer.classList.remove('view-card');
+      postsContainer.classList.add('view-list');
+    } else {
+      postsContainer.classList.remove('view-list');
+      postsContainer.classList.add('view-card');
+    }
   }
 }
 
