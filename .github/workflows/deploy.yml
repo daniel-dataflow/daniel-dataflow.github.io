@@ -37,7 +37,7 @@ jobs:
           git clone --depth=1 https://github.com/nunocoracao/blowfish.git themes/blowfish
 
       - name: Build with Hugo
-        run: hugo --minify
+        run: hugo --minify --baseURL "https://daniel-dataflow.github.io/"
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
