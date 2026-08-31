@@ -968,74 +968,108 @@ function closeCategoryModal() {
 }
 
 function closeCatDeleteModal() {
-  document.getElementById('catDeleteModal').style.display = 'none';
+  const modal = document.getElementById('catDeleteModal');
+  if (modal) modal.style.display = 'none';
 }
 
 function openCategoryDeleteDialog() {
-  if (!currentEditingCategorySlug) return;
-  const cat = allCategories.find(c => c.slug === currentEditingCategorySlug);
-  if (!cat) return;
+  const slug = (currentEditingCategorySlug || document.getElementById('catSlugInput')?.value || '').trim();
+  if (!slug) {
+    alert('삭제할 카테고리를 먼저 선택해 주세요.');
+    return;
+  }
 
-  const postsInCat = allPosts.filter(p => {
-    return p.category_slug === currentEditingCategorySlug || 
-           (p.path && p.path.includes(`/${currentEditingCategorySlug}/`));
+  let cat = (allCategories || []).find(c => c.slug === slug);
+  if (!cat) {
+    const name = document.getElementById('catNameInput')?.value.trim() || slug;
+    cat = { name: name, slug: slug };
+  }
+
+  const postsInCat = (allPosts || []).filter(p => {
+    return p.category_slug === slug || 
+           (p.path && p.path.includes(`/${slug}/`)) ||
+           (p.category && p.category.toLowerCase() === (cat.name || '').toLowerCase());
   });
 
   const warningEl = document.getElementById('catDeleteWarningText');
   const migrationBox = document.getElementById('catMigrationBox');
   const targetSelect = document.getElementById('catMigrationTargetSelect');
   const confirmBtn = document.getElementById('btnConfirmCatDelete');
+  const deleteModal = document.getElementById('catDeleteModal');
 
-  const otherCategories = allCategories.filter(c => c.slug !== currentEditingCategorySlug);
+  const otherCategories = (allCategories || []).filter(c => c.slug !== slug);
 
   if (postsInCat.length === 0) {
-    warningEl.innerHTML = `현재 <b>'${escapeHtml(cat.name)}'</b> 카테고리에 속한 글이 없습니다.<br>해당 카테고리를 완전히 삭제하시겠습니까?`;
-    migrationBox.style.display = 'none';
-    confirmBtn.innerHTML = '<i class="fa-solid fa-trash-can"></i> 카테고리 즉시 삭제';
-  } else {
-    warningEl.innerHTML = `⚠️ <b>'${escapeHtml(cat.name)}'</b> 카테고리에 총 <strong style="color: #38bdf8;">${postsInCat.length}개</strong>의 작성된 글이 있습니다.<br>기존 글들이 유실되지 않도록 이동할 대상 카테고리를 지정해 주세요.`;
-    migrationBox.style.display = 'block';
-    
-    if (otherCategories.length === 0) {
-      targetSelect.innerHTML = `<option value="tech">일반 기술 / Tech (기본 카테고리)</option>`;
-    } else {
-      targetSelect.innerHTML = otherCategories.map(c => `
-        <option value="${c.slug}">${escapeHtml(c.name)} (${escapeHtml(c.slug)})</option>
-      `).join('');
+    if (warningEl) {
+      warningEl.innerHTML = `현재 <b>'${escapeHtml(cat.name)}'</b> 카테고리에 속한 글이 없습니다.<br><br>정말로 이 카테고리(폴더 및 _index.md)를 완전히 삭제하시겠습니까?`;
     }
-    confirmBtn.innerHTML = `<i class="fa-solid fa-arrows-split-up-and-left"></i> ${postsInCat.length}개 글 이동 및 카테고리 삭제`;
+    if (migrationBox) migrationBox.style.display = 'none';
+    if (confirmBtn) confirmBtn.innerHTML = '<i class="fa-solid fa-trash-can"></i> 카테고리 즉시 삭제';
+  } else {
+    if (warningEl) {
+      warningEl.innerHTML = `⚠️ <b>'${escapeHtml(cat.name)}'</b> 카테고리에 총 <strong style="color: #38bdf8;">${postsInCat.length}개</strong>의 작성된 글이 있습니다.<br><br>기존 글들이 유실되지 않도록 이동할 대상 카테고리를 지정해 주세요.`;
+    }
+    if (migrationBox) migrationBox.style.display = 'block';
+    
+    if (targetSelect) {
+      if (otherCategories.length === 0) {
+        targetSelect.innerHTML = `<option value="tech">일반 기술 / Tech (기본 카테고리)</option>`;
+      } else {
+        targetSelect.innerHTML = otherCategories.map(c => `
+          <option value="${c.slug}">${escapeHtml(c.name)} (${escapeHtml(c.slug)})</option>
+        `).join('');
+      }
+    }
+    if (confirmBtn) {
+      confirmBtn.innerHTML = `<i class="fa-solid fa-arrows-split-up-and-left"></i> ${postsInCat.length}개 글 이동 및 카테고리 삭제`;
+    }
   }
 
-  document.getElementById('catDeleteModal').style.display = 'flex';
+  if (deleteModal) {
+    deleteModal.style.display = 'flex';
+  }
 }
 
 async function executeCategoryDeletion() {
-  if (!currentEditingCategorySlug) return;
-  const cat = allCategories.find(c => c.slug === currentEditingCategorySlug);
+  const slug = (currentEditingCategorySlug || document.getElementById('catSlugInput')?.value || '').trim();
+  if (!slug) {
+    alert('삭제할 카테고리 슬러그를 찾을 수 없습니다.');
+    return;
+  }
+  let cat = (allCategories || []).find(c => c.slug === slug);
+  if (!cat) {
+    const name = document.getElementById('catNameInput')?.value.trim() || slug;
+    cat = { name: name, slug: slug };
+  }
+
   const pat = localStorage.getItem('daniel_gh_pat');
   const repo = localStorage.getItem('daniel_gh_repo') || 'daniel-dataflow/daniel-dataflow.github.io';
 
   if (!pat) {
-    alert('GitHub PAT 토큰이 설정되지 않았습니다.');
+    alert('GitHub PAT 토큰이 설정되지 않았습니다. 우측 상단 [⚙️ 블로그 설정]에서 PAT를 먼저 저장해 주세요.');
     return;
   }
 
-  const postsInCat = allPosts.filter(p => {
-    return p.category_slug === currentEditingCategorySlug || 
-           (p.path && p.path.includes(`/${currentEditingCategorySlug}/`));
+  const postsInCat = (allPosts || []).filter(p => {
+    return p.category_slug === slug || 
+           (p.path && p.path.includes(`/${slug}/`)) ||
+           (p.category && p.category.toLowerCase() === (cat.name || '').toLowerCase());
   });
 
   const confirmBtn = document.getElementById('btnConfirmCatDelete');
-  confirmBtn.disabled = true;
-  confirmBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 삭제 및 글 이전 처리 중...';
+  if (confirmBtn) {
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 삭제 및 글 이전 처리 중...';
+  }
 
   try {
-    const targetSlug = document.getElementById('catMigrationTargetSelect').value || 'tech';
-    const targetCat = allCategories.find(c => c.slug === targetSlug) || { name: targetSlug, slug: targetSlug };
+    const targetSelect = document.getElementById('catMigrationTargetSelect');
+    const targetSlug = (targetSelect && targetSelect.value) ? targetSelect.value : 'tech';
+    const targetCat = (allCategories || []).find(c => c.slug === targetSlug) || { name: targetSlug, slug: targetSlug };
 
     // 1. Migrate posts if any
     for (const post of postsInCat) {
-      // Fetch full post content from GitHub
+      if (!post.path) continue;
       const fileRes = await fetch(`https://api.github.com/repos/${repo}/contents/${post.path}`, {
         headers: { Authorization: `token ${pat}`, Accept: 'application/vnd.github.v3+json' }
       });
@@ -1054,7 +1088,7 @@ async function executeCategoryDeletion() {
           method: 'PUT',
           headers: { Authorization: `token ${pat}`, Accept: 'application/vnd.github.v3+json' },
           body: JSON.stringify({
-            message: `Migrate post '${post.title}' from '${currentEditingCategorySlug}' to '${targetSlug}' (via Blog Studio)`,
+            message: `Migrate post '${post.title}' from '${slug}' to '${targetSlug}' (via Blog Studio)`,
             content: b64New,
             branch: 'main'
           })
@@ -1074,7 +1108,7 @@ async function executeCategoryDeletion() {
     }
 
     // 2. Delete _index.md of the category
-    const indexPath = `content/posts/${currentEditingCategorySlug}/_index.md`;
+    const indexPath = `content/posts/${slug}/_index.md`;
     const indexRes = await fetch(`https://api.github.com/repos/${repo}/contents/${indexPath}`, {
       headers: { Authorization: `token ${pat}`, Accept: 'application/vnd.github.v3+json' }
     });
@@ -1084,7 +1118,7 @@ async function executeCategoryDeletion() {
         method: 'DELETE',
         headers: { Authorization: `token ${pat}`, Accept: 'application/vnd.github.v3+json' },
         body: JSON.stringify({
-          message: `Delete category '${cat.name}' (${currentEditingCategorySlug})`,
+          message: `Delete category '${cat.name}' (${slug}) (via Blog Studio)`,
           sha: indexData.sha,
           branch: 'main'
         })
@@ -1093,14 +1127,17 @@ async function executeCategoryDeletion() {
 
     closeCatDeleteModal();
     closeCategoryModal();
-    showToast(`🎉 '${cat.name}' 카테고리가 삭제되었으며, 기존 글(${postsInCat.length}개)이 '${targetCat.name}'(으)로 안전하게 이전되었습니다.`);
+    showToast(`🎉 '${cat.name}' 카테고리가 삭제되었습니다!`);
 
     // Reload posts and categories
     await fetchPostsAndCategories();
   } catch (err) {
     alert('카테고리 삭제 및 글 이전 중 오류 발생: ' + err.message);
   } finally {
-    confirmBtn.disabled = false;
+    if (confirmBtn) {
+      confirmBtn.disabled = false;
+      confirmBtn.innerHTML = '<i class="fa-solid fa-trash-can"></i> 글 이동 및 카테고리 삭제 실행';
+    }
   }
 }
 
