@@ -6,11 +6,24 @@
 let searchIndex = null;
 
 document.addEventListener('DOMContentLoaded', () => {
+  initResponsiveTables();
   initLiveSearch();
   initCodeCopyButtons();
   initBackToTop();
   checkLikeState();
 });
+
+// 0. Auto-Wrap Tables for Smooth Horizontal Scrolling on Mobile
+function initResponsiveTables() {
+  const tables = document.querySelectorAll('.nb-article-body table');
+  tables.forEach(table => {
+    if (table.parentElement && table.parentElement.classList.contains('nb-table-wrap')) return;
+    const wrapper = document.createElement('div');
+    wrapper.className = 'nb-table-wrap';
+    table.parentNode.insertBefore(wrapper, table);
+    wrapper.appendChild(table);
+  });
+}
 
 // 1. Toast Notification
 function showToast(message) {

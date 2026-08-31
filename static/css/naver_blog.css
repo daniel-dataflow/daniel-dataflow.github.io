@@ -1118,30 +1118,55 @@ a {
   margin-bottom: 0;
 }
 
-/* Tables */
+/* Responsive Tables & Scroll Wrapper */
+.nb-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 24px 0;
+  border-radius: var(--nb-radius-sm);
+  border: 1px solid var(--nb-border);
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.nb-table-wrap table,
 .nb-article-body table {
   width: 100%;
+  min-width: 560px !important; /* Preserves rich readable table layout without character squishing! */
   border-collapse: collapse;
-  margin: 28px 0;
-  font-size: 0.92rem;
-  border: 1px solid var(--nb-border);
-  border-radius: var(--nb-radius-sm);
-  overflow: hidden;
+  font-size: 0.9rem;
+  margin: 0;
+  border: none;
 }
 
 .nb-article-body th {
-  background: #f1f3f5;
-  color: #191f28;
+  background: #f8fafc;
+  color: #1e293b;
   font-weight: 700;
-  padding: 12px 16px;
+  padding: 12px 14px;
   text-align: left;
   border-bottom: 2px solid var(--nb-border);
+  white-space: nowrap;
+  min-width: 100px;
 }
 
 .nb-article-body td {
-  padding: 12px 16px;
+  padding: 12px 14px;
   border-bottom: 1px solid var(--nb-border-light);
   color: var(--nb-text-secondary);
+  line-height: 1.6;
+  vertical-align: top;
+  min-width: 120px;
+  word-break: keep-all;
+}
+
+.nb-article-body th:first-child,
+.nb-article-body td:first-child {
+  min-width: 80px;
+  font-weight: 700;
+  background: #fdfdfd;
 }
 
 .nb-article-body tr:nth-child(even) td {
@@ -1150,6 +1175,17 @@ a {
 
 .nb-article-body tr:hover td {
   background: var(--nb-green-light);
+}
+
+.nb-table-wrap::-webkit-scrollbar,
+.nb-article-body table::-webkit-scrollbar {
+  height: 6px;
+}
+
+.nb-table-wrap::-webkit-scrollbar-thumb,
+.nb-article-body table::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
 }
 
 /* Code Blocks (macOS Dark Card Style) */
