@@ -86,15 +86,17 @@ tags: ["Architecture", "Backend", "Optimization"]
 ### ✅ 성과 (이번 주에 팀이 달성한 주요 성과나 진척사항)
 - FrontEnd UI Prototype
 
-
+![이미지](/blog_images/img_2eff4711.png)
 
 
 - workflow 개념 정리
 
-
+![이미지](/blog_images/img_63224121.png)
 
 
 - Yolo 파인튜닝
+
+![이미지](/blog_images/img_39bc0b47.png)
 
 
 
