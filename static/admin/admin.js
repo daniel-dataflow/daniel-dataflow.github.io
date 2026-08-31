@@ -329,6 +329,84 @@ def example():
   handleEditorChange();
 }
 
+// ─── Post Filename & Date Resolvers (Strictly from Content) ───
+function extractDateFromContent(content, fallbackDate = '') {
+  if (!content) {
+    if (fallbackDate) {
+      const fnM = fallbackDate.match(/(\d{4})[-./](\d{2})[-./](\d{2})/);
+      if (fnM) return `${fnM[1]}-${fnM[2]}-${fnM[3]}`;
+    }
+    return new Date().toISOString().substring(0, 10);
+  }
+
+  // 1. Frontmatter date field (e.g. date: "2026-01-30 09:00:00", date: 2026.01.30)
+  const fmMatch = content.match(/^date:\s*["']?(\d{4})[-./](\d{2})[-./](\d{2})/im);
+  if (fmMatch) return `${fmMatch[1]}-${fmMatch[2]}-${fmMatch[3]}`;
+
+  // 2. Explicit date label in text (e.g. 작성일: 2026.01.30, 날짜: 2026-01-30)
+  const labelMatch = content.match(/(?:작성일|일자|날짜|date)[:：]?\s*["']?(\d{4})[-./](\d{2})[-./](\d{2})/i);
+  if (labelMatch) return `${labelMatch[1]}-${labelMatch[2]}-${labelMatch[3]}`;
+
+  // 3. Date range pattern (e.g. 2026.01.26 ~ 2026.01.30) -> End date prioritized
+  const rangeEndMatch = content.match(/[~-]\s*(\d{4})[-./](\d{2})[-./](\d{2})/);
+  if (rangeEndMatch) return `${rangeEndMatch[1]}-${rangeEndMatch[2]}-${rangeEndMatch[3]}`;
+
+  const rangeStartMatch = content.match(/\(?(\d{4})[-./](\d{2})[-./](\d{2})\s*[~-]/);
+  if (rangeStartMatch) return `${rangeStartMatch[1]}-${rangeStartMatch[2]}-${rangeStartMatch[3]}`;
+
+  // 4. Fallback from existing filename
+  if (fallbackDate) {
+    const fnM = fallbackDate.match(/(\d{4})[-./](\d{2})[-./](\d{2})/);
+    if (fnM) return `${fnM[1]}-${fnM[2]}-${fnM[3]}`;
+  }
+
+  return new Date().toISOString().substring(0, 10);
+}
+
+function extractTitleFromContent(content, fallbackTitle = 'post') {
+  if (!content) return fallbackTitle;
+
+  // 1. Frontmatter title
+  const fmTitleMatch = content.match(/^title:\s*["']?(.*?)["']?\s*$/im);
+  if (fmTitleMatch && fmTitleMatch[1].trim()) {
+    const t = fmTitleMatch[1].trim().replace(/^["']|["']$/g, '');
+    if (t && t !== '새 글 제목을 입력하세요') return t;
+  }
+
+  // 2. H1 heading (# ...)
+  const h1Match = content.match(/^#\s+(.+)$/m);
+  if (h1Match && h1Match[1].trim()) {
+    const t = h1Match[1].trim();
+    if (!t.match(/^[\(\[]?\d{4}[-./]\d{2}/)) return t;
+  }
+
+  // 3. H2 heading (## ...)
+  const h2Match = content.match(/^##\s+(.+)$/m);
+  if (h2Match && h2Match[1].trim()) {
+    const t = h2Match[1].trim();
+    if (!t.match(/^[\(\[]?\d{4}[-./]\d{2}/)) return t;
+  }
+
+  return fallbackTitle;
+}
+
+function extractPostFilename(content, currentFilename = '') {
+  const dateStr = extractDateFromContent(content, currentFilename);
+  let rawTitle = extractTitleFromContent(content);
+
+  if ((rawTitle === 'post' || !rawTitle) && currentFilename && !currentFilename.startsWith('new-post-') && !currentFilename.startsWith('post_')) {
+    const cleanFn = currentFilename.replace(/^\d{4}[-./]\d{2}[-./]\d{2}-?/, '').replace(/\.md$/, '');
+    if (cleanFn) rawTitle = cleanFn;
+  }
+
+  let safeTitle = rawTitle.replace(/[\[\]"'()]/g, '');
+  safeTitle = safeTitle.replace(/[^\w가-힣\s-]/g, '');
+  safeTitle = safeTitle.replace(/[\s_]+/g, '-');
+  safeTitle = safeTitle.replace(/-+/g, '-').replace(/^-|-$/g, '').substring(0, 50) || 'post';
+
+  return `${dateStr}-${safeTitle}.md`;
+}
+
 async function publishPostToGitHub() {
   const content = document.getElementById('markdownEditor').value.trim();
   const category = document.getElementById('postCategorySelect').value || 'picksafe';
@@ -338,18 +416,12 @@ async function publishPostToGitHub() {
     return;
   }
 
-  let filename = currentEditingPost ? currentEditingPost.filename : '';
-  if (!filename) {
-    const titleMatch = content.match(/title:\s*["']?(.*?)["']?\s*$/m);
-    const title = titleMatch ? titleMatch[1].trim() : 'new-post';
-    const dateStr = new Date().toISOString().substring(0, 10);
-    const safeTitle = title.replace(/[^a-zA-Z0-9가-힣_-]/g, '-').replace(/-+/g, '-').substring(0, 35);
-    filename = `${dateStr}-${safeTitle}.md`;
-  }
-
+  // Calculate canonical filename strictly from content's date and title
+  const oldFilename = currentEditingPost ? currentEditingPost.filename : '';
+  const filename = extractPostFilename(content, oldFilename);
   const targetPath = `content/posts/${category}/${filename}`;
 
-  if (!confirm(`다음 포스트를 GitHub [${category}] 카테고리에 배포하시겠습니까?\n\n경로: ${targetPath}`)) {
+  if (!confirm(`다음 포스트를 GitHub [${category}] 카테고리에 배포하시겠습니까?\n\n생성된 파일명: ${filename}\n경로: ${targetPath}`)) {
     return;
   }
 
@@ -359,8 +431,10 @@ async function publishPostToGitHub() {
   btn.disabled = true;
 
   try {
-    let sha = currentEditingPost ? currentEditingPost.sha : null;
-    if (!sha) {
+    let sha = null;
+    if (currentEditingPost && currentEditingPost.filename === filename) {
+      sha = currentEditingPost.sha;
+    } else {
       const checkRes = await ghRequest(`contents/${targetPath}`);
       if (checkRes.status === 200) {
         const checkData = await checkRes.json();
@@ -381,7 +455,34 @@ async function publishPostToGitHub() {
     });
 
     if (putRes.status === 200 || putRes.status === 201) {
-      alert(`🎉 포스트가 GitHub [${category}] 카테고리에 성공적으로 배포되었습니다!\n\n잠시 후 https://daniel-dataflow.github.io 에 자동 반영됩니다.`);
+      const putData = await putRes.json();
+
+      // If filename changed, remove the old file from GitHub
+      if (currentEditingPost && currentEditingPost.path && currentEditingPost.filename !== filename) {
+        try {
+          await ghRequest(`contents/${currentEditingPost.path}`, {
+            method: 'DELETE',
+            body: JSON.stringify({
+              message: `Rename cleanup: delete old ${currentEditingPost.filename} after publishing ${filename}`,
+              sha: currentEditingPost.sha,
+              branch: 'main'
+            })
+          });
+          console.log(`Deleted old file: ${currentEditingPost.path}`);
+        } catch (delErr) {
+          console.warn('이전 파일 삭제 경고:', delErr);
+        }
+      }
+
+      currentEditingPost = {
+        path: targetPath,
+        sha: putData.content?.sha || '',
+        category: category,
+        filename: filename
+      };
+
+      document.getElementById('currentDocStatusBadge').textContent = `[${category}] ${filename}`;
+      alert(`🎉 포스트가 GitHub [${category}] 카테고리에 성공적으로 배포되었습니다!\n\n파일명: ${filename}\n잠시 후 https://daniel-dataflow.github.io 에 자동 반영됩니다.`);
       await loadPublishedPosts();
       isEditorDirty = false;
     } else {
