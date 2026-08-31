@@ -985,7 +985,7 @@ function openCategoryDeleteDialog() {
     cat = { name: name, slug: slug };
   }
 
-  const postsInCat = (allPosts || []).filter(p => {
+  const postsInCat = (allPublishedPosts || []).filter(p => {
     return p.category_slug === slug || 
            (p.path && p.path.includes(`/${slug}/`)) ||
            (p.category && p.category.toLowerCase() === (cat.name || '').toLowerCase());
@@ -1050,7 +1050,7 @@ async function executeCategoryDeletion() {
     return;
   }
 
-  const postsInCat = (allPosts || []).filter(p => {
+  const postsInCat = (allPublishedPosts || []).filter(p => {
     return p.category_slug === slug || 
            (p.path && p.path.includes(`/${slug}/`)) ||
            (p.category && p.category.toLowerCase() === (cat.name || '').toLowerCase());
@@ -1130,7 +1130,8 @@ async function executeCategoryDeletion() {
     showToast(`🎉 '${cat.name}' 카테고리가 삭제되었습니다!`);
 
     // Reload posts and categories
-    await fetchPostsAndCategories();
+    await loadCategories();
+    await loadPublishedPosts();
   } catch (err) {
     alert('카테고리 삭제 및 글 이전 중 오류 발생: ' + err.message);
   } finally {
