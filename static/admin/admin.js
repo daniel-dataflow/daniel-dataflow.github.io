@@ -209,6 +209,15 @@ async function loadPublishedPosts() {
   }
 }
 
+let expandedFolders = new Set();
+let isFoldersInitialized = false;
+
+function extractYearMonth(filename) {
+  const m = filename.match(/^(\d{4})[-./](\d{2})/);
+  if (m) return `${m[1]}-${m[2]}`;
+  return '기타';
+}
+
 function renderPostsList() {
   const listContainer = document.getElementById('sidebarItemsList');
   if (!listContainer) return;
@@ -218,27 +227,159 @@ function renderPostsList() {
     return;
   }
 
-  listContainer.innerHTML = allPublishedPosts.map((post, idx) => `
-    <div class="post-item-card ${currentEditingPost && currentEditingPost.path === post.path ? 'active' : ''}">
-      <div class="post-item-info" onclick="loadPostContent('${post.path}', '${post.sha}', '${post.category}', '${post.name}')">
-        <div class="post-item-title">${escapeHtml(post.name.replace('.md', ''))}</div>
-        <div class="post-item-meta">
-          <span class="post-cat-pill">${escapeHtml(post.category)}</span>
+  // 1. Group posts by Year-Month (YYYY-MM)
+  const groups = {};
+  allPublishedPosts.forEach(post => {
+    const ym = extractYearMonth(post.name);
+    if (!groups[ym]) groups[ym] = [];
+    groups[ym].push(post);
+  });
+
+  // 2. Sort group keys in reverse chronological order (e.g. 2026-07, 2026-01)
+  const sortedYmKeys = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+
+  // Sort posts inside each group in reverse order
+  sortedYmKeys.forEach(ym => {
+    groups[ym].sort((a, b) => b.name.localeCompare(a.name));
+  });
+
+  // Initialize expanded state (expand all on first load)
+  if (!isFoldersInitialized) {
+    sortedYmKeys.forEach(ym => expandedFolders.add(ym));
+    isFoldersInitialized = true;
+  }
+
+  // 3. Header toolbar with count and [펼치기] / [접기] buttons
+  let html = `
+    <div class="sidebar-folder-toolbar">
+      <span class="folder-total-count">기발행 ${allPublishedPosts.length}건</span>
+      <div class="folder-action-btns">
+        <button type="button" class="btn-folder-toggle" onclick="expandAllFolders()">펼치기</button>
+        <button type="button" class="btn-folder-toggle" onclick="collapseAllFolders()">접기</button>
+      </div>
+    </div>
+  `;
+
+  // 4. Render Year-Month Accordion Folders
+  sortedYmKeys.forEach(ym => {
+    const posts = groups[ym];
+    const isExpanded = expandedFolders.has(ym);
+
+    const postsHtml = posts.map(post => `
+      <div class="post-item-card ${currentEditingPost && currentEditingPost.path === post.path ? 'active' : ''}" data-title="${escapeHtml(post.name.toLowerCase())}" data-cat="${escapeHtml(post.category.toLowerCase())}">
+        <div class="post-item-info" onclick="loadPostContent('${post.path}', '${post.sha}', '${post.category}', '${post.name}')">
+          <div class="post-item-title">${escapeHtml(post.name.replace('.md', ''))}</div>
+          <div class="post-item-meta">
+            <span class="post-cat-pill">${escapeHtml(post.category)}</span>
+          </div>
+        </div>
+        <button type="button" class="post-del-btn" title="포스트 삭제" onclick="deletePostFromGitHub('${post.path}', '${post.sha}', '${post.name}', event)">
+          <i class="fa-regular fa-trash-can"></i>
+        </button>
+      </div>
+    `).join('');
+
+    html += `
+      <div class="ym-folder-group" id="folder-group-${ym}" data-ym="${ym}">
+        <div class="ym-folder-header" onclick="toggleYmFolder('${ym}')">
+          <div class="ym-folder-title">
+            <i class="fa-solid fa-caret-right ym-arrow ${isExpanded ? 'rotated' : ''}" id="arrow-${ym}"></i>
+            <i class="fa-solid fa-folder ym-folder-icon"></i>
+            <span class="ym-name">${ym}</span>
+          </div>
+          <span class="ym-count-badge">${posts.length}</span>
+        </div>
+        <div class="ym-folder-items" id="items-${ym}" style="display: ${isExpanded ? 'flex' : 'none'};">
+          ${postsHtml}
         </div>
       </div>
-      <button type="button" class="post-del-btn" title="포스트 삭제" onclick="deletePostFromGitHub('${post.path}', '${post.sha}', '${post.name}', event)">
-        <i class="fa-regular fa-trash-can"></i>
-      </button>
-    </div>
-  `).join('');
+    `;
+  });
+
+  listContainer.innerHTML = html;
+}
+
+function toggleYmFolder(ym) {
+  const itemsEl = document.getElementById(`items-${ym}`);
+  const arrowEl = document.getElementById(`arrow-${ym}`);
+  if (!itemsEl) return;
+
+  const isCurrentlyOpen = expandedFolders.has(ym);
+  if (isCurrentlyOpen) {
+    expandedFolders.delete(ym);
+    itemsEl.style.display = 'none';
+    if (arrowEl) arrowEl.classList.remove('rotated');
+  } else {
+    expandedFolders.add(ym);
+    itemsEl.style.display = 'flex';
+    if (arrowEl) arrowEl.classList.add('rotated');
+  }
+}
+
+function expandAllFolders() {
+  document.querySelectorAll('.ym-folder-group').forEach(group => {
+    const ym = group.dataset.ym;
+    if (ym) {
+      expandedFolders.add(ym);
+      const itemsEl = document.getElementById(`items-${ym}`);
+      const arrowEl = document.getElementById(`arrow-${ym}`);
+      if (itemsEl) itemsEl.style.display = 'flex';
+      if (arrowEl) arrowEl.classList.add('rotated');
+    }
+  });
+}
+
+function collapseAllFolders() {
+  expandedFolders.clear();
+  document.querySelectorAll('.ym-folder-group').forEach(group => {
+    const ym = group.dataset.ym;
+    if (ym) {
+      const itemsEl = document.getElementById(`items-${ym}`);
+      const arrowEl = document.getElementById(`arrow-${ym}`);
+      if (itemsEl) itemsEl.style.display = 'none';
+      if (arrowEl) arrowEl.classList.remove('rotated');
+    }
+  });
 }
 
 function filterPostsList() {
   const q = document.getElementById('postSearchInput').value.toLowerCase().trim();
-  const cards = document.querySelectorAll('.post-item-card');
-  cards.forEach(card => {
-    const text = card.textContent.toLowerCase();
-    card.style.display = text.includes(q) ? 'flex' : 'none';
+  const groups = document.querySelectorAll('.ym-folder-group');
+
+  groups.forEach(group => {
+    const cards = group.querySelectorAll('.post-item-card');
+    let visibleInGroup = 0;
+
+    cards.forEach(card => {
+      const text = (card.dataset.title || '') + ' ' + (card.dataset.cat || '');
+      const match = text.includes(q);
+      card.style.display = match ? 'flex' : 'none';
+      if (match) visibleInGroup++;
+    });
+
+    if (q) {
+      if (visibleInGroup > 0) {
+        group.style.display = 'block';
+        const ym = group.dataset.ym;
+        const itemsEl = document.getElementById(`items-${ym}`);
+        const arrowEl = document.getElementById(`arrow-${ym}`);
+        if (itemsEl) itemsEl.style.display = 'flex';
+        if (arrowEl) arrowEl.classList.add('rotated');
+      } else {
+        group.style.display = 'none';
+      }
+    } else {
+      group.style.display = 'block';
+      const ym = group.dataset.ym;
+      const isExpanded = expandedFolders.has(ym);
+      const itemsEl = document.getElementById(`items-${ym}`);
+      const arrowEl = document.getElementById(`arrow-${ym}`);
+      if (itemsEl) itemsEl.style.display = isExpanded ? 'flex' : 'none';
+      if (arrowEl) {
+        if (isExpanded) arrowEl.classList.add('rotated');
+        else arrowEl.classList.remove('rotated');
+      }
+    }
   });
 }
 

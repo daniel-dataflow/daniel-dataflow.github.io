@@ -1145,3 +1145,111 @@ body {
   align-items: center !important;
   gap: 4px !important;
 }
+
+/* ─── Year-Month Folder Accordion & Toolbar Styles ─── */
+.sidebar-folder-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 4px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 6px;
+}
+
+.folder-total-count {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.folder-action-btns {
+  display: flex;
+  gap: 4px;
+}
+
+.btn-folder-toggle {
+  background: #1e293b;
+  border: 1px solid var(--border-color);
+  color: #94a3b8;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-folder-toggle:hover {
+  background: #334155;
+  color: #ffffff;
+  border-color: var(--accent-cyan);
+}
+
+.ym-folder-group {
+  margin-bottom: 6px;
+}
+
+.ym-folder-header {
+  background: #1e293b;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 7px 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.15s;
+  user-select: none;
+}
+
+.ym-folder-header:hover {
+  background: #283548;
+  border-color: rgba(56, 189, 248, 0.4);
+}
+
+.ym-folder-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ym-arrow {
+  font-size: 0.72rem;
+  color: #38bdf8;
+  transition: transform 0.2s ease;
+  width: 10px;
+  text-align: center;
+}
+
+.ym-arrow.rotated {
+  transform: rotate(90deg);
+}
+
+.ym-folder-icon {
+  color: #f59e0b;
+  font-size: 0.88rem;
+}
+
+.ym-name {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #f8fafc;
+  letter-spacing: 0.5px;
+}
+
+.ym-count-badge {
+  background: rgba(14, 165, 233, 0.15);
+  color: #38bdf8;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 1px 7px;
+  border-radius: 10px;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+}
+
+.ym-folder-items {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 6px 0 4px 8px;
+}
