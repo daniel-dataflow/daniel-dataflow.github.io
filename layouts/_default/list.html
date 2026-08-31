@@ -14,6 +14,11 @@
         {{ end }}
       </h2>
       <span class="nb-list-badge">총 {{ len .RegularPages }}개의 글</span>
+      {{ if .Params.project_url }}
+      <a href="{{ .Params.project_url }}" target="_blank" rel="noopener noreferrer" class="nb-project-badge-btn" title="{{ .Title }} 프로젝트 바로가기 (새창)">
+        <i class="fa-solid fa-arrow-up-right-from-square"></i> 프로젝트 바로가기
+      </a>
+      {{ end }}
     </div>
     
     <!-- 보기 모드 전환 버튼 (카드형 / 목록형) -->

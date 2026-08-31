@@ -13,7 +13,10 @@
     </div>
     <p class="nb-profile-bio">{{ .Site.Params.author_bio }}</p>
     <div class="nb-profile-actions">
-      <a href="{{ .Site.Params.github_url }}" target="_blank" class="nb-btn-primary" title="GitHub 프로필 바로가기">
+      <a href="{{ .Site.Params.portfolio_url | default .Site.Params.github_url }}" target="_blank" rel="noopener noreferrer" class="nb-btn-primary" title="포트폴리오 바로가기 (새창)">
+        <i class="fa-solid fa-briefcase"></i> Portfolio
+      </a>
+      <a href="{{ .Site.Params.github_url }}" target="_blank" rel="noopener noreferrer" class="nb-btn-sub" title="GitHub 프로필 바로가기 (새창)">
         <i class="fa-brands fa-github"></i> GitHub
       </a>
       <a href="mailto:{{ .Site.Params.email }}" class="nb-btn-sub" title="이메일 문의하기">
@@ -59,6 +62,11 @@
           <i class="fa-regular fa-folder"></i> {{ .Title }}
           <span class="nb-count">({{ len .RegularPages }})</span>
         </a>
+        {{ if .Params.project_url }}
+        <a href="{{ .Params.project_url }}" target="_blank" rel="noopener noreferrer" class="nb-cat-project-link" title="{{ .Title }} 프로젝트 바로가기 (새창)">
+          <i class="fa-solid fa-arrow-up-right-from-square"></i>
+        </a>
+        {{ end }}
       </li>
       {{ end }}
     </ul>

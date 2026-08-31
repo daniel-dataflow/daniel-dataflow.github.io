@@ -122,13 +122,38 @@ async function loadCategories() {
     const res = await ghRequest('contents/content/posts');
     if (res.status === 200) {
       const items = await res.json();
-      allCategories = items
-        .filter(item => item.type === 'dir' && !item.name.startsWith('.'))
-        .map(item => ({
+      const dirs = items.filter(item => item.type === 'dir' && !item.name.startsWith('.'));
+      
+      allCategories = await Promise.all(dirs.map(async item => {
+        let name = item.name;
+        let desc = `${item.name} 아카이브`;
+        let project_url = '';
+        let indexSha = null;
+
+        try {
+          const idxRes = await ghRequest(`contents/${item.path}/_index.md`);
+          if (idxRes.status === 200) {
+            const idxData = await idxRes.json();
+            indexSha = idxData.sha;
+            const idxText = decodeBase64Utf8(idxData.content);
+            const tm = idxText.match(/title:\s*["']?(.*?)["']?\s*$/m);
+            const dm = idxText.match(/description:\s*["']?(.*?)["']?\s*$/m);
+            const pm = idxText.match(/project_url:\s*["']?(.*?)["']?\s*$/m);
+            if (tm && tm[1]) name = tm[1].trim();
+            if (dm && dm[1]) desc = dm[1].trim();
+            if (pm && pm[1]) project_url = pm[1].trim();
+          }
+        } catch (e) {}
+
+        return {
           slug: item.name,
-          name: item.name.replace(/-/g, ' ').toUpperCase(),
+          name: name,
+          desc: desc,
+          project_url: project_url,
+          indexSha: indexSha,
           path: item.path
-        }));
+        };
+      }));
 
       updateCategoryDropdown();
       const countEl = document.getElementById('catCountNum');
@@ -402,16 +427,31 @@ function renderCategoriesList() {
   const listContainer = document.getElementById('sidebarItemsList');
   if (!listContainer) return;
 
-  listContainer.innerHTML = allCategories.map(cat => `
-    <div class="post-item-card" onclick="openCategoryModal()">
-      <div class="post-item-info">
-        <div class="post-item-title">📁 ${escapeHtml(cat.slug)}</div>
-        <div class="post-item-meta">
-          <span>content/posts/${escapeHtml(cat.slug)}</span>
-        </div>
+  let html = `
+    <div class="sidebar-folder-toolbar">
+      <span class="folder-total-count">카테고리 ${allCategories.length}개</span>
+      <div class="folder-action-btns">
+        <button type="button" class="btn-folder-toggle" onclick="openCategoryModal('__new__')" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.3);">➕ 카테고리 추가</button>
       </div>
     </div>
+  `;
+
+  html += allCategories.map(cat => `
+    <div class="post-item-card" onclick="openCategoryModal('${cat.slug}')" style="flex-direction: row; align-items: center; justify-content: space-between;">
+      <div class="post-item-info">
+        <div class="post-item-title">📁 ${escapeHtml(cat.name)} <span style="font-size: 0.72rem; color: #94a3b8; font-weight: normal;">(${escapeHtml(cat.slug)})</span></div>
+        <div class="post-item-meta" style="flex-direction: column; align-items: flex-start; gap: 3px;">
+          <span>${escapeHtml(cat.desc || 'content/posts/' + cat.slug)}</span>
+          ${cat.project_url ? `<span style="color: #38bdf8; font-size: 0.72rem;"><i class="fa-solid fa-arrow-up-right-from-square"></i> ${escapeHtml(cat.project_url)}</span>` : ''}
+        </div>
+      </div>
+      <button type="button" class="btn-folder-toggle" title="카테고리 수정" style="padding: 4px 8px; font-size: 0.75rem;">
+        <i class="fa-solid fa-pen-to-square"></i>
+      </button>
+    </div>
   `).join('');
+
+  listContainer.innerHTML = html;
 }
 
 // ─── 4. Post Selection & Editor Logic ───
@@ -701,8 +741,9 @@ async function openSettingsModal() {
       document.getElementById('cfgAuthor').value = getField(/author:\s*["']?(.*?)["']?\s*$/m, 'Daniel');
       document.getElementById('cfgAuthorRole').value = getField(/author_role:\s*["']?(.*?)["']?\s*$/m, 'Backend & Systems Architect');
       document.getElementById('cfgAuthorBio').value = getField(/author_bio:\s*["']?(.*?)["']?\s*$/m, '');
-      document.getElementById('cfgEmail').value = getField(/email:\s*["']?(.*?)["']?\s*$/m, '');
+      document.getElementById('cfgPortfolioUrl').value = getField(/portfolio_url:\s*["']?(.*?)["']?\s*$/m, 'https://daniel-dataflow.github.io');
       document.getElementById('cfgGithubUrl').value = getField(/github_url:\s*["']?(.*?)["']?\s*$/m, '');
+      document.getElementById('cfgEmail').value = getField(/email:\s*["']?(.*?)["']?\s*$/m, '');
 
       statusEl.textContent = '설정 불러오기 완료';
     }
@@ -729,8 +770,9 @@ async function saveSiteSettingsToGitHub() {
   const author = document.getElementById('cfgAuthor').value.trim();
   const authorRole = document.getElementById('cfgAuthorRole').value.trim();
   const authorBio = document.getElementById('cfgAuthorBio').value.trim();
-  const email = document.getElementById('cfgEmail').value.trim();
+  const portfolioUrl = document.getElementById('cfgPortfolioUrl').value.trim() || 'https://daniel-dataflow.github.io';
   const githubUrl = document.getElementById('cfgGithubUrl').value.trim();
+  const email = document.getElementById('cfgEmail').value.trim();
 
   const newYaml = `baseURL: "https://daniel-dataflow.github.io/"
 languageCode: "ko-kr"
@@ -762,6 +804,7 @@ params:
   author_bio: "${authorBio}"
   author_avatar: "/images/profile.jpg"
   banner_image: "/images/banner.jpg"
+  portfolio_url: "${portfolioUrl}"
   github_url: "${githubUrl}"
   email: "${email}"
 
@@ -826,24 +869,103 @@ menu:
 }
 
 // ─── 6. Category Management Modal ───
-function openCategoryModal() {
+let currentEditingCategorySlug = null;
+
+function openCategoryModal(targetSlug = null) {
   const modal = document.getElementById('categoryModal');
   const container = document.getElementById('categoryChipsModalContainer');
   modal.style.display = 'flex';
+  document.getElementById('catModalStatus').textContent = '';
 
-  container.innerHTML = allCategories.map(cat => `
-    <span class="cat-badge-chip">📁 ${escapeHtml(cat.slug)}</span>
-  `).join('');
+  renderCategoryModalChips(targetSlug);
+
+  if (targetSlug === '__new__' || allCategories.length === 0) {
+    switchToNewCategoryMode();
+  } else {
+    const slugToSelect = targetSlug || (allCategories[0] ? allCategories[0].slug : null);
+    if (slugToSelect) {
+      selectCategoryForEditing(slugToSelect);
+    } else {
+      switchToNewCategoryMode();
+    }
+  }
+}
+
+function renderCategoryModalChips(activeSlug) {
+  const container = document.getElementById('categoryChipsModalContainer');
+  if (!container) return;
+
+  container.innerHTML = allCategories.map(cat => {
+    const isActive = cat.slug === activeSlug;
+    return `
+      <span class="cat-badge-chip ${isActive ? 'active' : ''}" onclick="selectCategoryForEditing('${cat.slug}')" style="cursor: pointer; ${isActive ? 'background: #0284c7; color: #fff;' : ''}">
+        📁 ${escapeHtml(cat.name)} <span style="font-size: 0.72rem; opacity: 0.8;">(${escapeHtml(cat.slug)})</span>
+      </span>
+    `;
+  }).join('') + `
+    <span class="cat-badge-chip" onclick="switchToNewCategoryMode()" style="cursor: pointer; border-style: dashed; color: #38bdf8;">
+      ➕ 새 카테고리 추가
+    </span>
+  `;
+}
+
+function selectCategoryForEditing(slug) {
+  currentEditingCategorySlug = slug;
+  renderCategoryModalChips(slug);
+
+  const cat = allCategories.find(c => c.slug === slug);
+  if (!cat) return;
+
+  document.getElementById('catNameInput').value = cat.name || slug;
+  document.getElementById('catSlugInput').value = cat.slug;
+  document.getElementById('catSlugInput').disabled = true;
+  document.getElementById('catDescInput').value = cat.desc || '';
+  document.getElementById('catProjectUrlInput').value = cat.project_url || '';
+
+  const titleEl = document.getElementById('catFormModeTitle');
+  if (titleEl) {
+    titleEl.innerHTML = `
+      <span><i class="fa-solid fa-pen-to-square"></i> '${escapeHtml(cat.name)}' 카테고리 정보 수정</span>
+      <button type="button" class="btn-folder-toggle" onclick="switchToNewCategoryMode()" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.3);">➕ 새 카테고리 추가</button>
+    `;
+  }
+
+  const btn = document.getElementById('btnSaveCategory');
+  if (btn) {
+    btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> 카테고리 수정 저장 & GitHub 배포';
+  }
+}
+
+function switchToNewCategoryMode() {
+  currentEditingCategorySlug = null;
+  renderCategoryModalChips('__new__');
+
+  document.getElementById('catNameInput').value = '';
+  document.getElementById('catSlugInput').value = '';
+  document.getElementById('catSlugInput').disabled = false;
+  document.getElementById('catDescInput').value = '';
+  document.getElementById('catProjectUrlInput').value = '';
+
+  const titleEl = document.getElementById('catFormModeTitle');
+  if (titleEl) {
+    titleEl.innerHTML = `<span><i class="fa-solid fa-plus"></i> 새 카테고리 생성</span>`;
+  }
+
+  const btn = document.getElementById('btnSaveCategory');
+  if (btn) {
+    btn.innerHTML = '<i class="fa-solid fa-plus"></i> 카테고리 생성 & GitHub 연동';
+  }
 }
 
 function closeCategoryModal() {
   document.getElementById('categoryModal').style.display = 'none';
 }
 
-async function createNewCategoryOnGitHub() {
-  const name = document.getElementById('newCatName').value.trim();
-  const slug = document.getElementById('newCatSlug').value.trim().toLowerCase();
-  const desc = document.getElementById('newCatDesc').value.trim() || `${name} 아카이브`;
+async function saveCategoryOnGitHub() {
+  const name = document.getElementById('catNameInput').value.trim();
+  const slug = (document.getElementById('catSlugInput').value || currentEditingCategorySlug || '').trim().toLowerCase();
+  const desc = document.getElementById('catDescInput').value.trim() || `${name} 아카이브`;
+  const projectUrl = document.getElementById('catProjectUrlInput').value.trim();
 
   if (!name || !slug) {
     alert('카테고리 이름과 영문 슬러그를 모두 입력해 주세요.');
@@ -851,20 +973,35 @@ async function createNewCategoryOnGitHub() {
   }
 
   const cleanSlug = slug.replace(/[^a-z0-9_-]/g, '-');
-  const indexContent = `---
-title: "${name}"
-description: "${desc}"
----
-`;
+  let indexContent = `---\ntitle: "${name}"\ndescription: "${desc}"\n`;
+  if (projectUrl) {
+    indexContent += `project_url: "${projectUrl}"\n`;
+  }
+  indexContent += `---\n`;
 
   const targetPath = `content/posts/${cleanSlug}/_index.md`;
+  const statusEl = document.getElementById('catModalStatus');
+  statusEl.textContent = '⏳ GitHub 저장 중...';
 
   try {
+    let sha = null;
+    const catObj = allCategories.find(c => c.slug === cleanSlug);
+    if (catObj && catObj.indexSha) {
+      sha = catObj.indexSha;
+    } else {
+      const checkRes = await ghRequest(`contents/${targetPath}`);
+      if (checkRes.status === 200) {
+        const checkData = await checkRes.json();
+        sha = checkData.sha;
+      }
+    }
+
     const payload = {
-      message: `Create category: ${name} (via In-Repo Web Admin Studio)`,
+      message: `Update category: ${name} (via In-Repo Web Admin Studio)`,
       content: encodeBase64Utf8(indexContent),
       branch: 'main'
     };
+    if (sha) payload.sha = sha;
 
     const res = await ghRequest(`contents/${targetPath}`, {
       method: 'PUT',
@@ -872,16 +1009,21 @@ description: "${desc}"
     });
 
     if (res.status === 200 || res.status === 201) {
-      alert(`📁 "${name}" 카테고리가 성공적으로 생성되었습니다!`);
+      alert(`📁 "${name}" 카테고리 정보가 성공적으로 저장 및 배포되었습니다!`);
       closeCategoryModal();
       await loadCategories();
       document.getElementById('postCategorySelect').value = cleanSlug;
+      if (document.getElementById('tabCategories').classList.contains('active')) {
+        renderCategoriesList();
+      }
     } else {
       const err = await res.json();
-      alert('카테고리 생성 실패: ' + (err.message || res.statusText));
+      alert('카테고리 저장 실패: ' + (err.message || res.statusText));
     }
   } catch (e) {
-    alert('카테고리 생성 오류: ' + e.message);
+    alert('카테고리 저장 오류: ' + e.message);
+  } finally {
+    statusEl.textContent = '';
   }
 }
 

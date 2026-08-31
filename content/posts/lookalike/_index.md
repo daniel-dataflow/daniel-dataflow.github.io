@@ -1,4 +1,5 @@
 ---
 title: "Lookalike"
-description: "AI 패션 이미지 검색 기반 듀프 쇼핑 최저가 비교 서비스"
+description: "시니어 얼굴 특징 추출 및 유사도 분석 AI 플랫폼"
+project_url: "https://github.com/daniel-dataflow/lookalike"
 ---

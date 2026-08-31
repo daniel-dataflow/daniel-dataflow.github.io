@@ -28,6 +28,7 @@ params:
   author_bio: "초고속 응답 시스템 설계와 확장 가능한 데이터 파이프라인을 구축합니다. 기술적 의사결정의 이유와 Trade-off를 깊이 있게 기록합니다."
   author_avatar: "/images/profile.jpg"
   banner_image: "/images/banner.jpg"
+  portfolio_url: "https://daniel-dataflow.github.io"
   github_url: "https://github.com/daniel-dataflow"
   email: "daniel.han.developer@gmail.com"
 

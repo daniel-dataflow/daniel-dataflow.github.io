@@ -1,4 +1,5 @@
 ---
 title: "PickSafe"
-description: "PickSafe 프로젝트 의사결정 및 아키텍처 아카이브"
+description: "화장품 성분 분석 및 피부 안전도 판별 시스템"
+project_url: "https://github.com/daniel-dataflow/picksafe"
 ---
