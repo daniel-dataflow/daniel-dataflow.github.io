@@ -793,14 +793,22 @@ function handleInlineImageUpload(e) {
   }
 }
 
+window.blogImagePreviewCache = window.blogImagePreviewCache || {};
+
 async function uploadInArticleImageToGitHub(file) {
   const editor = document.getElementById('markdownEditor');
   const ext = file.name.split('.').pop().toLowerCase() || 'png';
   const safeFilename = `img_${Date.now()}.${ext}`;
   const targetPath = `static/blog_images/${safeFilename}`;
 
+  // Instant local Blob Preview Cache (0ms instant preview)
+  const blobUrl = URL.createObjectURL(file);
+  window.blogImagePreviewCache[`/blog_images/${safeFilename}`] = blobUrl;
+  window.blogImagePreviewCache[`/static/blog_images/${safeFilename}`] = blobUrl;
+  window.blogImagePreviewCache[safeFilename] = blobUrl;
+
   const cursorPos = editor.selectionStart;
-  const tempTag = `\n![이미지 업로드 중...](loading)\n`;
+  const tempTag = `\n![이미지 업로드 중...](data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="32" viewBox="0 0 160 32"><rect width="160" height="32" rx="6" fill="%230f172a"/><text x="10" y="20" fill="%2303c75a" font-family="sans-serif" font-size="12" font-weight="bold">⏳ 업로드 중...</text></svg>)\n`;
   editor.value = editor.value.substring(0, cursorPos) + tempTag + editor.value.substring(cursorPos);
   handleEditorChange();
 
@@ -1246,6 +1254,28 @@ function renderLivePreview() {
         ${footerHtml}
       </div>
     `;
+
+    // Resolve and Fallback Images for 100% Instant Preview
+    const previewImgs = viewport.querySelectorAll('img');
+    previewImgs.forEach(img => {
+      const src = img.getAttribute('src') || '';
+      if (window.blogImagePreviewCache && window.blogImagePreviewCache[src]) {
+        img.src = window.blogImagePreviewCache[src];
+      } else if (src.startsWith('/blog_images/') || src.startsWith('/static/blog_images/')) {
+        const filename = src.split('/').pop();
+        if (window.blogImagePreviewCache && window.blogImagePreviewCache[filename]) {
+          img.src = window.blogImagePreviewCache[filename];
+        } else {
+          // If GitHub Pages is still building and /blog_images/ returns 404, fallback to GitHub Raw CDN!
+          img.onerror = function() {
+            if (!this.dataset.fallbackTried) {
+              this.dataset.fallbackTried = 'true';
+              this.src = `https://raw.githubusercontent.com/daniel-dataflow/daniel-dataflow.github.io/main/static/blog_images/${filename}`;
+            }
+          };
+        }
+      }
+    });
 
     // Render Mermaid diagrams
     if (typeof mermaid !== 'undefined') {
