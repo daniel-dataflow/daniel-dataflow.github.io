@@ -315,8 +315,8 @@ a {
 
 .nb-profile-actions {
   display: grid;
-  grid-template-columns: 1.1fr 1fr 1fr;
-  gap: 6px;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
   margin-bottom: 14px;
 }
 
@@ -417,11 +417,17 @@ a {
 }
 
 .nb-category-item {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
   border-radius: var(--nb-radius-sm);
   transition: all 0.2s ease;
+  padding-right: 6px;
 }
 
 .nb-category-link {
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -429,6 +435,17 @@ a {
   font-size: 0.88rem;
   color: var(--nb-text-secondary);
   font-weight: 500;
+  text-decoration: none;
+  min-width: 0;
+}
+
+.nb-cat-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .nb-category-item:hover,

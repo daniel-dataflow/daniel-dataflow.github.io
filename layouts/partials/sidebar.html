@@ -16,9 +16,6 @@
       <a href="{{ .Site.Params.portfolio_url | default .Site.Params.github_url }}" target="_blank" rel="noopener noreferrer" class="nb-btn-primary" title="포트폴리오 바로가기 (새창)">
         <i class="fa-solid fa-briefcase"></i> Portfolio
       </a>
-      <a href="{{ .Site.Params.github_url }}" target="_blank" rel="noopener noreferrer" class="nb-btn-sub" title="GitHub 프로필 바로가기 (새창)">
-        <i class="fa-brands fa-github"></i> GitHub
-      </a>
       <a href="mailto:{{ .Site.Params.email }}" class="nb-btn-sub" title="이메일 문의하기">
         <i class="fa-regular fa-envelope"></i> Email
       </a>
@@ -52,14 +49,14 @@
     <ul class="nb-category-list">
       <li class="nb-category-item {{ if .IsHome }}active{{ end }}">
         <a href="/" class="nb-category-link">
-          <i class="fa-solid fa-list-ul"></i> 전체보기
+          <span class="nb-cat-name"><i class="fa-solid fa-list-ul"></i> 전체보기</span>
           <span class="nb-count">({{ len .Site.RegularPages }})</span>
         </a>
       </li>
       {{ range (site.GetPage "section" "posts").Sections }}
       <li class="nb-category-item {{ if hasPrefix $.RelPermalink .RelPermalink }}active{{ end }}">
         <a href="{{ .RelPermalink }}" class="nb-category-link">
-          <i class="fa-regular fa-folder"></i> {{ .Title }}
+          <span class="nb-cat-name"><i class="fa-regular fa-folder"></i> {{ .Title }}</span>
           <span class="nb-count">({{ len .RegularPages }})</span>
         </a>
         {{ if .Params.project_url }}
