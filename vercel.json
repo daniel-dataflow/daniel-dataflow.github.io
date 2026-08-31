@@ -1,0 +1,6 @@
+{
+  "buildCommand": "hugo --minify",
+  "outputDirectory": "public",
+  "installCommand": "curl -L https://github.com/gohugoio/hugo/releases/download/v0.147.0/hugo_extended_0.147.0_linux-amd64.tar.gz | tar -xz && mv hugo /usr/local/bin/hugo && git clone --depth=1 https://github.com/nunocoracao/blowfish.git themes/blowfish",
+  "framework": null
+}
