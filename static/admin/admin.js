@@ -33,6 +33,21 @@ function initMermaid() {
   }
 }
 
+function showToast(message) {
+  let toast = document.getElementById('nb-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'nb-toast';
+    toast.className = 'nb-toast';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = message;
+  toast.classList.add('show');
+  setTimeout(() => {
+    toast.classList.remove('show');
+  }, 2500);
+}
+
 function checkAuthentication() {
   if (!githubPat) {
     document.getElementById('loginOverlay').style.display = 'flex';
@@ -1126,7 +1141,7 @@ async function executeCategoryDeletion() {
 
     closeCatDeleteModal();
     closeCategoryModal();
-    showToast(`🎉 '${cat.name}' 카테고리가 삭제되었습니다!`);
+    alert(`🎉 '${cat.name}' 카테고리가 성공적으로 삭제되었습니다.`);
 
     // Reload posts and categories
     await loadCategories();
