@@ -1580,24 +1580,259 @@ a {
 }
 
 /* ==========================================================================
+   Mobile / Tablet Top Summary Section (.nb-mobile-top-bar)
+   ========================================================================== */
+.nb-mobile-top-bar {
+  display: none; /* Hidden on desktop (> 960px) */
+  width: 100%;
+  margin-bottom: 18px;
+}
+
+/* 1. Mobile Compact Profile Card */
+.nb-m-profile-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ffffff;
+  border: 1px solid var(--nb-border);
+  border-radius: var(--nb-radius);
+  padding: 12px 14px;
+  box-shadow: var(--nb-shadow);
+  margin-bottom: 10px;
+  gap: 10px;
+}
+
+.nb-m-profile-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.nb-m-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--nb-green);
+  flex-shrink: 0;
+}
+
+.nb-m-profile-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.nb-m-author-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.nb-m-author-name {
+  font-size: 0.96rem;
+  font-weight: 800;
+  color: var(--nb-text-primary);
+}
+
+.nb-m-author-role {
+  font-size: 0.72rem;
+  color: var(--nb-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nb-m-stats-row {
+  font-size: 0.75rem;
+  color: var(--nb-text-secondary);
+}
+
+.nb-m-stats-row strong {
+  color: var(--nb-green);
+  font-weight: 700;
+}
+
+.nb-m-stat-dot {
+  margin: 0 4px;
+  color: #cbd5e1;
+}
+
+.nb-m-profile-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.nb-m-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--nb-green);
+  color: #ffffff !important;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 6px;
+  text-decoration: none;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.nb-m-btn-primary:hover {
+  background: var(--nb-green-hover);
+}
+
+.nb-m-btn-sub {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--nb-border-light);
+  border: 1px solid var(--nb-border);
+  color: var(--nb-text-secondary);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+
+/* 2. Mobile Horizontal Scrollable Category Chips Slider */
+.nb-m-category-slider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 2px 8px 2px;
+  margin-bottom: 8px;
+}
+
+.nb-m-category-slider::-webkit-scrollbar {
+  height: 4px;
+}
+
+.nb-m-category-slider::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.nb-m-cat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #ffffff;
+  border: 1px solid var(--nb-border);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--nb-text-secondary);
+  text-decoration: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.nb-m-cat-chip:hover {
+  border-color: var(--nb-green);
+  color: var(--nb-green);
+}
+
+.nb-m-cat-chip.active {
+  background: var(--nb-green);
+  border-color: var(--nb-green);
+  color: #ffffff !important;
+  font-weight: 700;
+  box-shadow: 0 3px 10px rgba(3, 199, 90, 0.25);
+}
+
+.nb-m-cat-count {
+  font-size: 0.72rem;
+  opacity: 0.85;
+  background: rgba(0, 0, 0, 0.06);
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+
+.nb-m-cat-chip.active .nb-m-cat-count {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.nb-m-ext-icon {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.7rem;
+  margin-left: 2px;
+  opacity: 0.75;
+}
+
+.nb-m-ext-icon:hover {
+  opacity: 1;
+}
+
+/* 3. Mobile Search Box */
+.nb-m-search-box {
+  position: relative;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.nb-m-search-box input {
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid var(--nb-border);
+  border-radius: 8px;
+  padding: 9px 12px 9px 36px;
+  font-size: 0.84rem;
+  font-family: inherit;
+  color: var(--nb-text-primary);
+  outline: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+  transition: border-color 0.2s;
+}
+
+.nb-m-search-box input:focus {
+  border-color: var(--nb-green);
+}
+
+.nb-m-search-box i {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  font-size: 0.84rem;
+}
+
+/* ==========================================================================
    7. Comprehensive Responsive Layout (Mobile / Tablet)
    ========================================================================== */
 @media (max-width: 960px) {
-  .nb-layout-grid {
-    grid-template-columns: 1fr;
-    gap: 20px;
+  .nb-mobile-top-bar {
+    display: block !important;
   }
-  
+
   .nb-sidebar {
-    order: 2;
+    display: none !important; /* Hide redundant desktop sidebar cards on mobile/tablet */
   }
-  
+
+  .nb-layout-grid {
+    display: block !important;
+    width: 100% !important;
+  }
+
   .nb-main-content {
-    order: 1;
+    width: 100% !important;
   }
 
   .nb-content-card {
-    padding: 22px 18px;
+    padding: 20px 16px;
   }
 
   .nb-banner-content {

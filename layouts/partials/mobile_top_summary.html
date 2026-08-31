@@ -1,0 +1,50 @@
+<!-- Mobile / Tablet Top Summary Section (Visible on screens <= 960px) -->
+<div class="nb-mobile-top-bar">
+  <!-- 1. Compact Profile & Action Bar -->
+  <div class="nb-m-profile-card">
+    <div class="nb-m-profile-left">
+      <img src="{{ .Site.Params.author_avatar }}" alt="{{ .Site.Params.author }}" class="nb-m-avatar" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=Daniel&background=03c75a&color=fff&size=80';">
+      <div class="nb-m-profile-info">
+        <div class="nb-m-author-row">
+          <span class="nb-m-author-name">{{ .Site.Params.author }}</span>
+          <span class="nb-m-author-role">{{ .Site.Params.author_role }}</span>
+        </div>
+        <div class="nb-m-stats-row">
+          <span>전체 글 <strong>{{ len .Site.RegularPages }}</strong>개</span>
+          <span class="nb-m-stat-dot">·</span>
+          <span>카테고리 <strong>{{ len (site.GetPage "section" "posts").Sections }}</strong>개</span>
+        </div>
+      </div>
+    </div>
+    <div class="nb-m-profile-actions">
+      <a href="{{ .Site.Params.portfolio_url | default .Site.Params.github_url }}" target="_blank" rel="noopener noreferrer" class="nb-m-btn-primary" title="포트폴리오 바로가기">
+        <i class="fa-solid fa-briefcase"></i> Portfolio
+      </a>
+      <a href="mailto:{{ .Site.Params.email }}" class="nb-m-btn-sub" title="이메일 문의">
+        <i class="fa-regular fa-envelope"></i>
+      </a>
+    </div>
+  </div>
+
+  <!-- 2. Horizontal Scrollable Category Chips Slider -->
+  <div class="nb-m-category-slider">
+    <a href="/" class="nb-m-cat-chip {{ if .IsHome }}active{{ end }}">
+      <i class="fa-solid fa-list-ul"></i> 전체보기 <span class="nb-m-cat-count">{{ len .Site.RegularPages }}</span>
+    </a>
+    {{ range (site.GetPage "section" "posts").Sections }}
+    <a href="{{ .RelPermalink }}" class="nb-m-cat-chip {{ if hasPrefix $.RelPermalink .RelPermalink }}active{{ end }}">
+      <i class="fa-regular fa-folder"></i> {{ .Title }} <span class="nb-m-cat-count">{{ len .RegularPages }}</span>
+      {{ if .Params.project_url }}
+      <span class="nb-m-ext-icon" onclick="event.stopPropagation(); window.open('{{ .Params.project_url }}', '_blank');" title="프로젝트 링크"><i class="fa-solid fa-arrow-up-right-from-square"></i></span>
+      {{ end }}
+    </a>
+    {{ end }}
+  </div>
+
+  <!-- 3. Mobile Search Box -->
+  <div class="nb-m-search-box">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <input type="text" id="nb-m-search-input" placeholder="글 제목, 내용, 태그 실시간 검색..." autocomplete="off">
+    <div id="nb-m-search-results" class="nb-search-dropdown" style="display: none;"></div>
+  </div>
+</div>

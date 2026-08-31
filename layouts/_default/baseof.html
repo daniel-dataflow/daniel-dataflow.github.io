@@ -7,11 +7,14 @@
   {{ partial "header.html" . }}
 
   <div class="nb-layout-container">
+    <!-- 모바일 / 태블릿 전용 상단 요약 바 (프로필 요약 & 카테고리 칩 슬라이더 & 검색) -->
+    {{ partial "mobile_top_summary.html" . }}
+
     <div class="nb-layout-grid">
-      <!-- 좌측 사이드바 (260px) -->
+      <!-- 좌측 사이드바 (데스크톱에서는 좌측 사이드바 표시) -->
       {{ partial "sidebar.html" . }}
 
-      <!-- 우측 본문 영역 (780px) -->
+      <!-- 본문 영역 -->
       <main class="nb-main-content" id="main-content">
         {{ block "main" . }}{{ end }}
       </main>

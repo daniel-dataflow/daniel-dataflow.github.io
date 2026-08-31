@@ -143,11 +143,12 @@ function initCodeCopyButtons() {
   });
 }
 
-// 6. Full-Site Live Search with Dropdown
+// 6. Full-Site Live Search with Dropdown (Desktop & Mobile)
 async function initLiveSearch() {
-  const searchInput = document.getElementById('nb-search-input');
-  const resultsContainer = document.getElementById('nb-search-results');
-  if (!searchInput || !resultsContainer) return;
+  const inputs = [
+    { input: document.getElementById('nb-search-input'), results: document.getElementById('nb-search-results') },
+    { input: document.getElementById('nb-m-search-input'), results: document.getElementById('nb-m-search-results') }
+  ];
 
   try {
     const res = await fetch('/index.json');
@@ -158,58 +159,62 @@ async function initLiveSearch() {
     console.warn('Search index load error:', e);
   }
 
-  searchInput.addEventListener('input', (e) => {
-    const query = e.target.value.toLowerCase().trim();
-    if (!query) {
-      resultsContainer.style.display = 'none';
-      resultsContainer.innerHTML = '';
-      return;
-    }
+  inputs.forEach(({ input, results }) => {
+    if (!input || !results) return;
 
-    if (!searchIndex) {
-      resultsContainer.innerHTML = '<div class="nb-search-empty">검색 인덱스를 불러오는 중입니다...</div>';
-      resultsContainer.style.display = 'block';
-      return;
-    }
+    input.addEventListener('input', (e) => {
+      const query = e.target.value.toLowerCase().trim();
+      if (!query) {
+        results.style.display = 'none';
+        results.innerHTML = '';
+        return;
+      }
 
-    const matches = searchIndex.filter(post => {
-      const t = (post.title || '').toLowerCase();
-      const c = (post.category || '').toLowerCase();
-      const s = (post.summary || '').toLowerCase();
-      const tags = (post.tags || []).join(' ').toLowerCase();
-      return t.includes(query) || c.includes(query) || s.includes(query) || tags.includes(query);
+      if (!searchIndex) {
+        results.innerHTML = '<div class="nb-search-empty">검색 인덱스를 불러오는 중입니다...</div>';
+        results.style.display = 'block';
+        return;
+      }
+
+      const matches = searchIndex.filter(post => {
+        const t = (post.title || '').toLowerCase();
+        const c = (post.category || '').toLowerCase();
+        const s = (post.summary || '').toLowerCase();
+        const tags = (post.tags || []).join(' ').toLowerCase();
+        return t.includes(query) || c.includes(query) || s.includes(query) || tags.includes(query);
+      });
+
+      if (matches.length === 0) {
+        results.innerHTML = `<div class="nb-search-empty">🔍 <b>"${escapeHtml(query)}"</b>에 대한 검색 결과가 없습니다.</div>`;
+      } else {
+        results.innerHTML = `
+          <div class="nb-search-header">검색 결과 (${matches.length}건)</div>
+          <div class="nb-search-items">
+            ${matches.slice(0, 8).map(item => `
+              <a href="${item.permalink}" class="nb-search-item">
+                <div class="nb-search-item-cat">${escapeHtml(item.category)}</div>
+                <div class="nb-search-item-title">${escapeHtml(item.title)}</div>
+                <div class="nb-search-item-summary">${escapeHtml(item.summary)}</div>
+                <div class="nb-search-item-date">${escapeHtml(item.date)}</div>
+              </a>
+            `).join('')}
+          </div>
+        `;
+      }
+      results.style.display = 'block';
     });
 
-    if (matches.length === 0) {
-      resultsContainer.innerHTML = `<div class="nb-search-empty">🔍 <b>"${escapeHtml(query)}"</b>에 대한 검색 결과가 없습니다.</div>`;
-    } else {
-      resultsContainer.innerHTML = `
-        <div class="nb-search-header">검색 결과 (${matches.length}건)</div>
-        <div class="nb-search-items">
-          ${matches.slice(0, 8).map(item => `
-            <a href="${item.permalink}" class="nb-search-item">
-              <div class="nb-search-item-cat">${escapeHtml(item.category)}</div>
-              <div class="nb-search-item-title">${escapeHtml(item.title)}</div>
-              <div class="nb-search-item-summary">${escapeHtml(item.summary)}</div>
-              <div class="nb-search-item-date">${escapeHtml(item.date)}</div>
-            </a>
-          `).join('')}
-        </div>
-      `;
-    }
-    resultsContainer.style.display = 'block';
-  });
+    document.addEventListener('click', (e) => {
+      if (!input.contains(e.target) && !results.contains(e.target)) {
+        results.style.display = 'none';
+      }
+    });
 
-  document.addEventListener('click', (e) => {
-    if (!searchInput.contains(e.target) && !resultsContainer.contains(e.target)) {
-      resultsContainer.style.display = 'none';
-    }
-  });
-
-  searchInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      resultsContainer.style.display = 'none';
-    }
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        results.style.display = 'none';
+      }
+    });
   });
 }
 
