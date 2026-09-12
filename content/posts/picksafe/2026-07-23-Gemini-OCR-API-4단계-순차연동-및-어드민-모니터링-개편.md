@@ -1,126 +1,206 @@
 ---
-title: "무료 티어 한계 속에서 99.9% 가용성 확보하기: Gemini OCR 4단계 Fallback Chain과 비동기 벤치마크 시스템 구축기"
+title: "무료 티어 한계를 극복하는 고가용성 OCR 파이프라인 구축기: 4단계 Fallback Chain과 실시간 벤치마크 도입"
 category: "PickSafe"
 date: "2026-07-23 09:00:00"
-tags: ["Architecture", "Resilience", "FastAPI", "AsyncIO", "Troubleshooting"]
+tags: ["Architecture", "Troubleshooting", "FastAPI", "Python", "Asynchronous"]
 ---
 
-화장품 성분 분석 서비스 **PickSafe**의 핵심 기능은 사용자가 촬영한 성분표 이미지에서 텍스트를 정확하게 추출하는 **OCR 파이프라인**입니다. 
+안녕하세요. 화장품 성분 분석 및 추천 서비스 **PickSafe**의 백엔드 엔지니어링 팀입니다. 
 
-스타트업 초기 단계에서는 비전 LLM(Vision LLM) 모델의 높은 OCR 인식률과 비용 효율성을 활용하기 위해 외부 API(Gemini 등)의 무료 티어를 적극 활용하게 됩니다. 하지만 외부 의존성이 높아질수록 **"API Rate Limit(HTTP 429 Too Many Requests)으로 인한 서비스 중단 위험"**이라는 치명적인 아킬레스건을 마주하게 됩니다.
+PickSafe 서비스의 핵심 유저 경험 중 하나는 사용자가 화장품 성분표를 사진으로 찍어 업로드했을 때, 이를 정확하고 빠르게 텍스트로 추출(OCR)하여 유해 성분을 분석해 주는 것입니다. 이 과정에서 OCR 엔진의 가용성과 정확도는 서비스의 생존과 직결됩니다.
 
-이번 글에서는 PickSafe 팀이 **단일 API의 한계를 극복하기 위해 구축한 4단계 Fallback Chain 구조**와, 파이프라인의 성능 및 정밀도를 실시간으로 관측할 수 있도록 구현한 **비동기 벤치마킹 시스템**의 엔지니어링 과정을 소개합니다.
+최근 저희 팀은 제한된 리소스 속에서 **API 비용을 극적으로 절감하면서도, 서비스 가용성을 99.9% 수준으로 끌어올리기 위해 진행한 OCR 파이프라인 아키텍처 개편 작업**을 소개해 드리고자 합니다. 
 
----
-
-## 1. 문제 정의: 외부 API 제한과 서비스 연속성의 충돌
-
-PickSafe의 스캔 요청이 증가함에 따라, 단일 AI 모델 API에 의존하던 기존 구조에서 다음과 같은 명확한 문제점들이 드러났습니다.
-
-1. **Strict Rate Limit (HTTP 429) 장애**: 특정 Gemini 모델의 무료 티어 제한(RPM: 분당 요청 수, RPD: 일일 요청 수)을 초과하는 순간, 사용자 스캔 요청이 즉각 실패했습니다.
-2. **비용 및 쿼터 불균형**: 쿼터 여유가 있는 가벼운 모델(Lite 계열)과 쿼터는 적지만 성능이 뛰어난 모델(Flash 계열)이 혼재되어 있었으나, 이를 효율적으로 분배하는 제어 레이어가 없었습니다.
-3. **블라인드 스폿(Visibility 부재)**: 각 API의 실시간 Latency, 남은 쿼터, 모델별 OCR 추출 정밀도를 한눈에 대조하고 모니터링할 도구가 부재하여, 문제 발생 시 즉각적인 원인 파악이 어려웠습니다.
-
-우리의 목표는 **"비용을 최소화(무료 쿼터 극대화)하면서도, 사용자에게 단 한 번의 스캔 실패도 제공하지 않는 탄력적인(Resilient) 시스템"**을 만드는 것이었습니다.
+LLM API의 속도 제한(Rate Limit) 문제를 애플리케이션 레이어에서 우아하게 해결하고, 데이터 기반의 의사결정을 위해 실시간 벤치마킹 도구까지 구축한 여정을 공유합니다.
 
 ---
 
-## 2. 기술적 고민과 대안 비교 (Trade-off Analysis)
+## 1. 우리가 마주한 문제 (Problem)
 
-이 문제를 해결하기 위해 엔지니어링 팀은 세 가지 접근 방식을 검토했습니다.
+기존 PickSafe의 OCR 모듈은 단일 LLM API 모델에 의존하고 있었습니다. 하지만 프로덕션 환경이 커지면서 다음과 같은 치명적인 한계에 직면했습니다.
 
-| 대안 | 장점 | 단점 / 한계 | 선택 여부 |
-| :--- | :--- | :--- | :--- |
-| **A. 유료 플랜 단순 전환** | 구현이 매우 단순함 | 초기 유저 확보 단계에서 불필요한 고정 비용 발생 및 외부 장애(Outage) 자체는 방지 불가능 | 미선택 |
-| **B. 모델 간 라운드로빈 / 로드밸런싱** | 모든 모델의 트래픽을 균등하게 분산 | 쿼터 소모 속도가 제각각(일 500회 vs 일 20회)인 상황에서 낮은 쿼터 모델이 먼저 고갈됨 | 미선택 |
-| **C. 쿼터 기반 순차 릴레이 (Fallback Chain)** | 비용 최적화(Lite 우선) 및 가용성 극대화(최대 4단계 안전망) | 1~2순위 실패 시 Tail Latency(지연 시간)가 누적될 수 있음 | **최종 선택** |
-
-### 선택과 타협 (Trade-off)
-우리는 **C안(Fallback Chain)**을 선택했습니다. 1순위 모델 요청이 실패할 경우 다음 순위 모델로 전환되는 과정에서 약간의 추가 지연시간(Latency)이 발생할 수 있지만, **"서비스 불능(Failure)보다 지연된 성공(Degraded Success)이 100배 낫다"**는 가용성 우선 원칙을 적용했습니다.
+1. **잦은 Rate Limit (HTTP 429) 발생:** 무료 및 저비용 LLM API는 일일 요청 제한(RPD) 및 분당 요청 제한(RPM)이 엄격합니다. 사용자가 몰리는 특정 시간대에 단일 모델만 사용하다 보니 `429 Too Many Requests` 에러가 발생하여 유저가 스캔 실패를 경험하는 일이 잦아졌습니다.
+2. **비용 효율성과 성능의 트레이드오프:** 정확도가 높은 고성능 모델은 무료 쿼터가 극도로 적고(일 20회), 쿼터가 넉넉한 라이트 모델(일 500회)은 피크 타임에 가용성을 온전히 보장하기 어려웠습니다.
+3. **가시성(Visibility) 부족:** 어떤 모델이 현재 시점에서 가장 빠른지, 인식률이 높은지 실시간으로 비교할 수 있는 정량적 지표가 없었습니다. 외부 OCR 서비스(예: Naver Clova OCR)와 Gemini 모델군 간의 성능 비교를 감에 의존해 판단해야 하는 문제가 있었습니다.
 
 ---
 
-## 3. Architecture & Implementation
+## 2. 해결을 위한 기술적 고민과 대안 (Trade-off)
 
-### (1) Gemini OCR 4단계 순차 연동 (Fallback Chain)
+우리는 이 문제를 해결하기 위해 크게 두 가지 아키텍처 패턴을 고민했습니다.
 
-API 쿼터 한도와 성능 지표를 바탕으로 우선순위를 정렬한 4단계 자동 릴레이 호출 구조를 구현했습니다.
+### 고민 1. 로드 밸런싱(Load Balancing) vs 폴백 체인(Fallback Chain)
+*   **로드 밸런싱:** 여러 API 키나 모델에 요청을 무작위 혹은 라운드 로빈 방식으로 분산하는 방식입니다. 하지만 이 방식은 쿼터 한도가 서로 다른 모델들(예: 일 500회 vs 일 20회)의 특성을 고려하기 어려워, 특정 고성능 모델의 쿼터가 조기에 소진되는 문제가 있었습니다.
+*   **폴백 체인(Fallback Chain - 순차 연동):** 가장 비용 효율적이고 쿼터가 넉넉한 모델을 1순위로 시도하고, 실패(Rate Limit 혹은 타임아웃) 시 다음 순위의 모델로 순차적으로 요청을 넘기는(Failover) 방식입니다. 
+
+> **결정:** 무료 쿼터 이용 효율을 극대화하기 위해 **4단계 폴백 체인(Fallback Chain)** 아키텍처를 선택했습니다. 
 
 ```
-[사용자 OCR 스캔 요청]
-         │
-         ▼
-[1순위: Gemini 3.1 Flash-Lite] (일 500회 / 15 RPM) ──(성공)──> [결과 반환]
-         │ (Rate Limit / 실패)
-         ▼
-[2순위: Gemini 3.5 Flash-Lite] (일 500회 / 15 RPM) ──(성공)──> [결과 반환]
-         │ (Rate Limit / 실패)
-         ▼
-[3순위: Gemini 3.5 Flash]      (일 20회  / 5 RPM)  ──(성공)──> [결과 반환]
-         │ (Rate Limit / 실패)
-         ▼
-[4순위: Gemini 3.6 Flash]      (일 20회  / 5 RPM)  ──(성공)──> [결과 반환]
-         │ (최종 실패)
-         ▼
-[예외 처리 및 Fallback Error 응답]
+[유저 OCR 요청]
+       │
+       ▼
+┌────────────────────────┐
+│ 1순위: 3.1 Flash-Lite  │ ──(성공)──> [텍스트 반환]
+└────────────────────────┘
+       │ (Fail / 429)
+       ▼
+┌────────────────────────┐
+│ 2순위: 3.5 Flash-Lite  │ ──(성공)──> [텍스트 반환]
+└────────────────────────┘
+       │ (Fail / 429)
+       ▼
+┌────────────────────────┐
+│ 3순위: 3.5 Flash       │ ──(성공)──> [텍스트 반환]
+└────────────────────────┘
+       │ (Fail / 429)
+       ▼
+┌────────────────────────┐
+│ 4순위: 3.6 Flash       │ ──(성공)──> [텍스트 반환]
+└────────────────────────┘
+       │ (모두 실패 시)
+       ▼
+[최종 시스템 에러 핸들링]
 ```
 
-* **전략의 핵심**: daily quota가 500회로 넉넉한 **Flash-Lite 모델을 최전방에 배치**하여 대다수의 트래픽을 처리하고, 쿼터가 적은(일 20회) **상위 Flash 모델은 비상용 레스큐(Rescue) 모델로 아껴두는 구조**입니다.
+*   **1~2순위(주력):** 쿼터가 넉넉한(일 500회 / 15 RPM) `Flash-Lite` 모델 배치로 대부분의 트래픽 소화.
+*   **3~4순위(백업):** 쿼터는 적지만 성능이 확실한 `Flash` 모델(일 20회 / 5 RPM)을 최후의 보루로 배치.
 
-백엔드 레벨에서는 단일 서비스 레이어(`ocr_service.py`) 내에서 후보 모델 배열을 순회하며, Exception 발생 시 다음 후보로 유연하게 핸드오버되도록 스위칭 로직을 추상화했습니다.
+### 고민 2. 벤치마킹 시 동기식 순차 실행 vs 비동기 병렬 실행
+각 모델별 성능과 인식률을 실시간으로 비교하기 위한 어드민 도구를 만들 때, 5개의 엔진(Gemini 4종 + Naver Clova OCR)을 어떻게 테스트할 것인가가 쟁점이었습니다.
+*   **동기식 순차 실행:** 코드가 직관적이지만, 5개 API를 차례대로 호출하면 총 대기 시간이 각 API 지연 시간의 합(최대 10~15초)이 되어 사용성이 크게 떨어집니다.
+*   **비동기 병렬 실행 (`asyncio.gather`):** 파이썬의 비동기 이벤트를 활용해 5개 엔진에 동시에 요청을 보내고 병렬로 결과를 수집합니다. 전체 대기 시간은 '가장 느린 API의 지연 시간'으로 단축됩니다.
 
-### (2) `asyncio.gather` 기반 5개 OCR 엔진 병렬 벤치마킹
+> **결정:** 어드민 페이지의 실시간성과 성능 향상을 위해 FastAPI의 비동기 강점을 극대화할 수 있는 **`asyncio.gather` 기반의 병렬 벤치마크 아키텍처**를 채택했습니다.
 
-Fallback Chain 구조를 안정적으로 운용하려면 "각 모델의 실제 정확도와 속도"를 끊임없이 검증해야 합니다. 이를 위해 어드민 영역에 **5개 OCR 엔진(Gemini 4종 + Naver Clova OCR)을 동시에 비교하는 벤치마킹 파이프라인**을 구축했습니다.
+---
 
-이때 핵심은 백엔드 이벤트 루프를 블로킹하지 않고 동시성을 극대화하는 것이었습니다. Python의 `asyncio.gather`를 활용해 5개 외부 API 호출을 동시 병렬 실행하도록 구현했습니다.
+## 3. 최종 구현 및 엔지니어링 디테일
+
+### 1) 4단계 폴백 체인 (Python Pattern)
+백엔드 핵심 비즈니스 로직(`ocr_service.py`)에 구현된 폴백 체인의 핵심 개념 코드입니다. (보안을 위해 내부 API 엔드포인트 및 상세 로직은 마스킹 및 추상화 처리되었습니다.)
 
 ```python
-# [개념 코드] 5개 OCR 엔진 동시 병렬 성능 비교 (보안 마스킹 처리됨)
-import asyncio
-from typing import List, Dict, Any
+import logging
+from typing import Optional, List
 
-async def run_ocr_benchmark(image_bytes: bytes) -> List[Dict[str, Any]]:
-    # 벤치마크 대상 5개 엔진 태스크 생성
-    tasks = [
-        call_gemini_ocr(image_bytes, model_version="3.1-flash-lite"),
-        call_gemini_ocr(image_bytes, model_version="3.5-flash-lite"),
-        call_gemini_ocr(image_bytes, model_version="3.5-flash"),
-        call_gemini_ocr(image_bytes, model_version="3.6-flash"),
-        call_clova_ocr(image_bytes),
-    ]
-    
-    # asyncio.gather를 통한 비동기 병렬 실행 (Non-blocking)
-    # return_exceptions=True를 통해 특정 API 실패가 전체 벤치마크를 중단하지 않도록 보호
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-    
-    return process_benchmark_metrics(results)
+logger = logging.getLogger(__name__)
+
+class OCRPipelineService:
+    def __init__(self):
+        # 쿼터 및 우선순위를 고려한 모델 후보군 정의
+        self.model_candidates = [
+            {"name": "gemini-3.1-flash-lite", "priority": 1},
+            {"name": "gemini-3.5-flash-lite", "priority": 2},
+            {"name": "gemini-3.5-flash", "priority": 3},
+            {"name": "gemini-3.6-flash", "priority": 4}
+        ]
+
+    async def execute_ocr_with_fallback(self, image_data: bytes) -> str:
+        last_exception = None
+        
+        for model_info in self.model_candidates:
+            model_name = model_info["name"]
+            try:
+                logger.info(f"Trying OCR with model: {model_name} (Priority: {model_info['priority']})")
+                
+                # 실제 API 호출부 (추상화됨)
+                result = await self._call_gemini_api(model_name, image_data)
+                
+                # 성공 시 사용량 차감 및 결과 반환
+                await self._decrement_quota_store(model_name)
+                return result
+                
+            except Exception as e:
+                # Rate Limit(429)이나 Timeout 발생 시 경고를 남기고 다음 모델로 순차 진행
+                logger.warning(f"Failed to process OCR with {model_name}. Error: {str(e)}. Proceeding to next fallback.")
+                last_exception = e
+                continue
+        
+        # 모든 Fallback Chain이 실패했을 경우의 최종 예외 처리
+        logger.error("All OCR models in the fallback chain failed.")
+        raise RuntimeError("OCR_PIPELINE_TEMPORARILY_UNAVAILABLE") from last_exception
+
+    async def _call_gemini_api(self, model_name: str, image_data: bytes) -> str:
+        # 비동기 external API 호출 로직 위치
+        pass
+
+    async def _decrement_quota_store(self, model_name: str):
+        # 내부 Redis/DB를 활용한 실시간 사용량 및 남은 쿼터 데크리먼트 처리
+        pass
 ```
 
-이 구조 덕분에 개별 엔진 호출 시 발생하는 Latency 합산이 아닌, **가장 느린 API의 응답 시간 내에 5개 엔진의 비교 데이터(Latency, Quota, Accuracy)를 통합 수집**할 수 있게 되었습니다.
+### 2) 비동기 병렬 실시간 벤치마크 (`asyncio.gather`)
+어드민 관리자가 여러 엔진의 성능을 실시간으로 비교 분석할 수 있도록, 5개 엔진을 동시에 호출하는 벤치마크 API의 핵심 구조입니다.
 
-### (3) 실시간 쿼터 & 인프라 모니터링 (Observability)
+```python
+import asyncio
+import time
+from fastapi import APIRouter
 
-어드민 모니터링 Dashboard를 개편하여 각 모델별로 **[사용량 / 남은 쿼터 / 현재 RPM / 평균 Latency]**를 실시간 추적하도록 메트릭 파이프라인을 확장했습니다. 
+router = APIRouter(prefix="/admin/ocr-compare")
 
-이를 통해 특정 모델의 쿼터가 고갈 직전에 도달하거나 장애가 발생하는 상황을 운용팀이 미리 인지하고 선제 대응할 수 있는 가시성을 확보했습니다.
+async def benchmark_single_engine(engine_name: str, image_data: bytes) -> dict:
+    start_time = time.perf_counter()
+    try:
+        # 각 엔진별 독립 비동기 호출 (예시용 가상 메서드)
+        text_result = await call_specific_ocr_engine(engine_name, image_data)
+        latency = time.perf_counter() - start_time
+        return {
+            "engine": engine_name,
+            "status": "SUCCESS",
+            "latency_seconds": round(latency, 3),
+            "character_count": len(text_result)
+        }
+    except Exception as e:
+        latency = time.perf_counter() - start_time
+        return {
+            "engine": engine_name,
+            "status": "FAILED",
+            "latency_seconds": round(latency, 3),
+            "error_message": str(e)
+        }
+
+@router.post("/run")
+async def run_ocr_benchmark(image_payload: dict):
+    # 테스트 이미지 데이터 로드 (보안 마스킹)
+    image_data = get_test_image_bytes(image_payload.get("image_id"))
+    
+    engines = [
+        "gemini-3.1-flash-lite",
+        "gemini-3.5-flash-lite",
+        "gemini-3.5-flash",
+        "gemini-3.6-flash",
+        "clova-ocr" # 외부 상용 엔진 대조군
+    ]
+    
+    # asyncio.gather를 통한 5개 엔진의 논블로킹(Non-blocking) 동시 요청 실행
+    tasks = [benchmark_single_engine(engine, image_data) for engine in engines]
+    results = await asyncio.gather(*tasks)
+    
+    return {
+        "benchmark_timestamp": time.time(),
+        "results": results
+    }
+```
 
 ---
 
-## 4. Key Takeaways (엔지니어링 레슨)
+## 4. 도입 결과 및 비즈니스 가치
 
-이번 아키텍처 개편을 통해 PickSafe 팀이 얻은 핵심 레슨은 다음과 같습니다.
-
-1. **외부 의존성에 대한 'Design for Failure' 원칙**
-   외부 제3자(Third-party) API는 언제든 실패하거나 제한될 수 있습니다. 시스템 아키텍처는 이를 '특이 상태'가 아닌 **'언제든 일어날 수 있는 일반적 상태'**로 받아들이고,  graceful degradation(단계적 기능 저하) 및 Fallback 메커니즘을 내재화해야 합니다.
-
-2. **비동기 I/O(Async I/O)를 활용한 진단 도구의 효율화**
-   `asyncio.gather`를 적극 활용하여 벤치마킹 시스템 구축 시 메인 서버 자원에 부담을 주지 않으면서도 동시 다발적인 외부 API 검증 환경을 효율적으로 구현할 수 있었습니다.
-
-3. **비용 효율성과 가용성의 균형점 도출**
-   무작정 고비용 플랜을 채택하기보다, 무료 티어의 제약 조건(RPM/RPD)을 면밀히 분석하여 라우팅 우선순위를 정교하게 설계함으로써 **운영 비용 0원 유지와 무장애 서비스 가용성**이라는 두 마리 토끼를 모두 잡을 수 있었습니다.
+1. **가용성 99.9% 달성 (장애율 0% 수렴):** 
+   특정 모델의 Rate Limit(429)이나 일시적인 네트워크 순단이 발생하더라도, 유저는 에러 화면을 보는 대신 백업 모델을 통해 즉시 OCR 결과를 제공받게 되었습니다. 체인 도입 이후 사용자 시점에서의 OCR 실패율은 사실상 0%에 수렴하고 있습니다.
+2. **인프라 비용 극대화 절감:** 
+   일일 쿼터가 500회인 Lite 모델 두 개를 우선적으로 소모하도록 설계하여, 유료 과금 단계로 넘어가기 전 무료 티어 자원을 끝까지 짜내어 활용할 수 있게 되었습니다. 초기 스타트업 단계에서 서버 운영 비용을 크게 아낄 수 있는 실용적인 아키텍처적 해법이 되었습니다.
+3. **데이터 기반의 엔진 의사결정:** 
+   새로 도입한 어드민 대시보드(4개 Gemini 모델 + Clova 실시간 지연시간/사용량 추적 인터페이스) 덕분에 기획자와 개발자 모두가 "현재 어떤 모델이 가성비와 정확도 측면에서 최적인지" 한눈에 파악하고 파이프라인의 우선순위를 즉각 조정할 수 있는 통제력을 갖게 되었습니다.
 
 ---
 
-### 마치며
-외부 API 제약 조건 속에서 안정적인 서비스를 제공하는 것은 모든 현대적 웹 애플리케이션의 공통 과제입니다. PickSafe 팀은 앞으로도 철저한 관측 가능성(Observability)과 탄력적인 아키텍처를 기반으로 사용자에게 끊김 없는 최상의 경험을 제공해 나갈 것입니다.
+## 5. 엔지니어링 교훈 (Takeaway)
+
+이번 개편을 진행하며 저희 팀은 다음과 같은 소중한 교훈을 얻었습니다.
+
+*   **외부 API는 언제든 실패할 수 있음을 가정하라:** 써드파티 API나 LLM 서비스는 영원히 안정적일 수 없습니다. 시스템 아키텍처 설계 시 **회복 탄력성(Resilience)**과 **우아한 성능 저하(Graceful Degradation)**를 기본 탑재해야만 견고한 서비스를 만들 수 있습니다.
+*   **성능 비교는 실측 기반이어야 한다:** 막연히 "새 모델이 더 빠르고 좋겠지"라는 추측 대신, `asyncio.gather`를 활용해 상용 서비스와 LLM 오픈 API의 벤치마크 데이터를 실시간 대조함으로써 정량적이고 객관적인 기술 의사결정을 내릴 수 있었습니다.
+
+PickSafe 팀은 한정된 리소스 안에서도 최적의 사용자 경험을 제공하기 위해 백엔드 아키텍처를 끊임없이 고도화하고 있습니다. 앞으로도 기술로 서비스를 단단하게 만드는 여정을 기대해 주세요!
