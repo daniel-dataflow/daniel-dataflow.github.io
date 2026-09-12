@@ -1,121 +1,98 @@
 ---
-title: "멀티 LLM 환경에서의 Single Source of Truth 구축과 API 쿼터 정합성 해결기"
+title: "LLM 쿼터 정합성 확보와 UI 파편화 해결: Dynamic Config와 롤백 패턴 적용기"
 category: "PickSafe"
 date: "2026-08-07 09:00:00"
-tags: ["Architecture", "FastAPI", "Frontend", "Refactoring", "Concurrency"]
+tags: ["Architecture", "FastAPI", "State Management", "LLM", "Troubleshooting"]
 ---
 
-프로덕션 환경에서 여러 인공지능(AI) 모델을 서비스에 통합해 활용하다 보면, 단순히 API를 호출하는 것을 넘어 **"어떻게 쿼터를 효율적으로 관리하고, 파편화된 UI/UX 상태를 유지보수 가능하게 만들 것인가"**라는 엔지니어링 과제에 직면하게 됩니다.
+프로덕션 환경에서 여러 LLM(Large Language Model) API를 로드밸런싱하고 모니터링하는 시스템을 운용하다 보면, 단순히 API를 호출하는 것 이상의 엔지니어링 과제에 직면하게 됩니다. 
 
-최근 저희 팀은 다양한 제미나이(Gemini) 모델을 멀티 키(Multi-Key) 기반으로 로드밸런싱하며 운영하는 과중에서, **프론트엔드 메타데이터의 파편화**, **네트워크 예외로 인한 쿼터 정합성 이탈**, **비동기 렌더링 레이스 컨디션(Race Condition)** 문제를 해결했습니다.
+최근 시스템 고도화 과정에서 **1) 프론트엔드와 백엔드 간 상태 파편화, 2) 실패한 API 요청으로 인한 쿼터 집계 오차, 3) 비동기 렌더링 타이밍 이슈(Race Condition)** 라는 세 가지 주요 문제를 해결했습니다. 
 
-이 글에서는 서비스 확장성을 해치던 기술 부채를 어떤 아키텍처적 의사결정(Trade-off)을 통해 해결했는지, 그 과정과 엔지니어링 레슨을 공유합니다.
-
----
-
-## 1. 문제 정의 (Problem Definition)
-
-서비스 규모가 확장되고 다양한 제미나이 모델 라인업(Flash, Flash-Lite 등)을 적용하면서 다음과 같은 3가지 핵심 기술 문제가 발생했습니다.
-
-### ① 파편화된 메타데이터 (Single Source of Truth 결여)
-각 화면(OCR 성능 테스트, 번역 관리, 인프라 모니터링 등)의 자바스크립트 파일(`ocr.js`, `translations.js` 등)마다 사용 가능한 모델 목록과 UI 표시 색상이 하드코딩되어 있었습니다. 모델이 새로 추가되거나 단종될 때마다 수많은 프론트엔드 파일을 일일이 찾아 수정해야 하는 구조적 한계가 존재했습니다.
-
-### ② API 호출 실패 시 쿼터 정합성 깨짐 (Quota Leakage)
-요청 전 실행되는 쿼터 차감 로직에서 RPD(일일 한도)와 RPM(분당 한도)을 선차감하였으나, 외부 API 서버 오류나 타임아웃 발생 시 **차감된 쿼터를 원상 복구(Rollback)하지 않는 문제**가 있었습니다. 이로 인해 실제 성공한 호출량과 시스템이 기록한 쿼터 간의 오차가 점점 벌어졌습니다.
-
-### ③ 비동기 순서 보장 실패 (Race Condition) 및 UI 불일치
-프론트엔드 초기화 시, 언어/환경 설정 데이터가 완료되기 전에 테이블 렌더링이 실행되어 간헐적으로 빈 화면이 노출되었습니다. 또한, 해상도에 따라 모니터링 카드의 그리드 레이아웃이 유동적으로 깨지는 UX 불일치가 발생했습니다.
+본 포스팅에서는 이 문제들을 해결하기 위해 도입한 **Dynamic Config 패턴**과 **쿼터 롤백 로직**, 그리고 비동기 데이터 흐름 제어에 대한 설계 고민과 기술적 레슨을 공유합니다.
 
 ---
 
-## 2. 기술적 고민과 대안 비교 (Trade-offs & Alternatives)
+## 1. 마주한 문제들 (The Problems)
 
-### 고민 1: 프론트엔드 빌드 파이프라인 vs 백엔드 동적 메타데이터 API
+### 1.1. 단일 진실 소스(SSOT)의 부재와 UI 파편화
+기존 구조에서는 신규 제미나이(Gemini) 모델이 추가되거나 사양이 변경될 때, 백엔드 로직뿐만 아니라 프론트엔드의 여러 자바스크립트 파일(`ocr.js`, `translations.js`, `infra.js`)에 하드코딩된 모델 리스트와 UI 테마 색상을 각각 수정해야 했습니다.
 
-*   **대안 A: 프론트엔드 공통 모듈/JSON 파일 도입**
-    *   *장점*: API 호출 없이 빠르게 static 데이터를 로드할 수 있음.
-    *   *단점*: 모델 정책 변경 시마다 프론트엔드 재빌드 및 배포가 필요함.
-*   **대안 B (선택): 백엔드 단일 진실 소스(SSOT) + 동적 메타데이터 API 전달**
-    *   *장점*: 백엔드의 `.env` 및 설정 객체(`quota_service.py`) 단 한 곳만 변경하면, 프론트엔드는 호출 시 동적으로 최신 모델 메타데이터(`models_meta`)를 받아 렌더링함. 배포 없이 환경변수 조정만으로 제어 가능.
-    *   *선택 이유*: 시스템 확장성과 무배포 모델 운영(Zero-downtime Ops)을 위해 **대안 B**를 선택했습니다.
+이로 인해 개발자의 실수로 특정 페이지에서 모델 정보가 누락되거나, 각 기능(OCR 성능 테스트, 대시보드, 번역 관리 등)마다 모델별 시각적 렌더링(색상, 순서)이 제각각 달라지는 **상태 불일치(State Drift)** 현상이 발생했습니다.
 
-### 고민 2: 쿼터 차감 방식 (Strict Distributed Lock vs Optimistic Rollback)
+### 1.2. API 실패 시 쿼터 정합성 깨짐 (Quota Leakage)
+제미나이 API 호출 시 분당 호출 제한(RPM) 및 일일 호출 제한(RPD)을 관리하기 위해 사전 쿼터 차감 방식을 사용하고 있었습니다. 
 
-*   **대안 A: 분산 락(Distributed Lock) 기반의 비관적 쿼터 관리**
-    *   *장점*: 완벽한 동기화 보장.
-    *   *단점*: API 호출마다 락 오버헤드가 발생하여 LLM 응답 지연 시간(Latency)이 증가함.
-*   **대안 B (선택): 낙관적 선차감 후 예외 발생 시 롤백 (Optimistic Decrement with Rollback)**
-    *   *장점*: 추가적인 락 오버헤드가 없어 레이턴시에 영향을 주지 않음.
-    *   *선택 이유*: LLM API 연동에서는 대역폭과 속도가 중요하므로, 선차감 후 호출 실패(`Try-Catch`) 시 쿼터를 복구하는 **Rollback 패턴**이 훨씬 효율적이라고 판단했습니다.
+그러나 네트워크 타임아웃, 외부 API 서버 오류(5xx) 등 **실제 응답을 받아오지 못한 실패 건에 대해서도 사전 차감된 쿼터가 복구되지 않는 문제**가 있었습니다. 이로 인해 실시간 모니터링 대시보드의 남은 쿼터량 수치와 실제 사용 가능한 쿼터 간의 정합성이 크게 떨어졌습니다.
+
+### 1.3. 비동기 렌더링 Race Condition
+프론트엔드 초기화 시, 언어 설정 등 필수 렌더링 기반 데이터(`loadLocaleSettings`)가 로드되기 전에 메인 테이블/카드 UI가 렌더링을 시작하면서 **간헐적으로 화면 전체가 빈 상태(Blank Screen)로 노출**되는 버그가 존재했습니다.
 
 ---
 
-## 3. 최종 해결 방안 (Implementation Details)
+## 2. 기술적 고민과 대안 비교 (Trade-offs & Decisions)
 
-### A. 백엔드 중심 Single Source of Truth (SSOT) 구축
+### A. Dynamic Configuration 패턴 기반 SSOT 구축
 
-백엔드 설정 객체 내에 모델의 한도, 렌더링 시그니처 색상 등의 메타데이터를 통합 정의했습니다.
+* **고민**: 모델 메타데이터(모델명, RPD/RPM 한도, UI 테마 색상)를 어디서 관리해야 하는가?
+* **대안 1 (각 클라이언트 관리)**: 기존 방식 유지. 클라이언트 요청 속도는 빠르지만 유지보수 비용이 크고 변경에 취약함.
+* **대안 2 (DB 기반 관리)**: DB 테이블을 추가하여 메타데이터를 저장. 유연하지만 단순 설정값을 위해 추가 IO 및 트랜잭션 비용 발생.
+* **최종 선택 (백엔드 Dynamic Config & API 주입)**: 백엔드의 Service Layer(`quota_service.py`)를 단일 진실 소스(SSOT)로 지정하고, 외부 환경 변수(`.env`)를 통해 동적으로 메타데이터를 파싱하도록 설계했습니다.
 
-```python
-# [백엔드 서비스 로직 예시 - 개념 추상화]
-# 소스코드 수정 없이 코어 설정을 동적으로 로드
-GEMINI_MODELS_CONFIG = parse_env_config()
-
-class QuotaService:
-    def get_models_metadata(self) -> dict:
-        """
-        프론트엔드 동적 렌더링을 위한 메타데이터 제공 API 엔드포인트 응답 객체 생성
-        """
-        return {
-            model_id: {
-                "name": config.name,
-                "color": config.color, # 예: 제미나이 퍼플(#9333ea), 핑크(#ec4899) 등
-                "rpm": config.rpm,
-                "rpd": config.rpd
-            }
-            for model_id, config in GEMINI_MODELS_CONFIG.items()
-        }
+```
+[.env / Config] 
+       │
+       ▼
+[Quota Service (SSOT)] ──(GET /models_meta)──► [Frontend Client]
+  (Dynamic Parsing)                               (Dynamic Rendering)
 ```
 
-프론트엔드는 페이지 로드 시 이 `models_meta` 정보를 받아와 드롭다운 콤보박스와 쿼터 카드 UI를 동적으로 생성하도록 전면 리팩토링했습니다.
+백엔드가 `/models_meta` 형태의 메타데이터 표준 API를 내려주면, 프론트엔드는 이를 받아 동적으로 DOM 및 콤보박스, 테마 색상을 렌더링합니다. 
 
-### B. Reliable Quota Rollback 패턴 적용
+* **Trade-off**: 초기 화면 진입 시 메타데이터를 조회하는 1회의 API RTT가 추가되지만, 코드 수정 및 재배포 없이 **환경변수 변경만으로 운영 환경에서 신규 모델 추가/단종 및 쿼터 정책을 즉시 반영**할 수 있는 아키텍처적 이점을 얻었습니다.
 
-API 호출 과정에서 발생하는 타임아웃, 5xx 에러 등의 예외 처리 블록에 쿼터 복원 로직을 이식했습니다.
+> **UI Visual Identity 통일**: 제미나이의 시각적 정체성을 유지하기 위해 로고의 대표 그라데이션 컬러(Deep Blue, Purple, Pink, Orange)를 브랜드 메타데이터 표준 색상 코드로 지정하여 전역 UI에 일관되게 적용했습니다.
+
+### B. 보상 트랜잭션 형태의 쿼터 롤백(Quota Rollback) 로직
+
+* **고민**: API 실패 시 쿼터 정합성을 어떻게 보장할 것인가?
+* **대안 1 (Post-Deduction)**: API 호출이 완벽히 성공한 후 쿼터를 차감.
+  * *문제점*: 동시 요청(Concurrent Requests)이 몰릴 때 순간적으로 API 한도를 초과(Over-quota)하여 외부 API로부터 Block 당할 위험이 큼.
+* **최종 선택 (Pre-Deduction with Rollback)**: 낙관적/안전 측면에서 **선 차감 후(Pre-Deduction), 예외 발생 시 보상 트랜잭션(Rollback) 수행**.
 
 ```python
-# [쿼터 관리 서비스 예시]
+# 쿼터 관리 로직 개념 예시 (Security Masked)
 async def execute_llm_request(model_id: str, payload: dict):
-    # 1. 쿼터 선차감 (Optimistic Decrement)
-    await quota_service.consume_quota(model_id)
+    # 1. 쿼터 선 차감 (Pre-deduct RPD/RPM)
+    await quota_service.deduct_quota(model_id)
     
     try:
-        # 2. 외부 LLM API 호출
+        # 2. External Gemini API Call
         response = await external_llm_client.call(model_id, payload)
         return response
     except Exception as exc:
-        # 3. 호출 실패 시 쿼터 롤백 (Rollback)
-        logger.error(f"LLM API 호출 실패. 쿼터 복구를 시작합니다. Model: {model_id}, Error: {exc}")
+        # 3. 실패 시 쿼터 복구 (Rollback Compensating Action)
+        logger.warning(f"LLM API Call failed. Rolling back quota for {model_id}. Error: {exc}")
         await quota_service.rollback_quota(model_id)
         raise exc
 ```
 
-### C. 프론트엔드 Race Condition 및 Responsive Layout 개선
+이 패턴을 통해 동시성 환경에서의 API 쿼터 초과 방지라는 안전성과, 실패 건에 대한 데이터 정합성 보장이라는 두 마리 토끼를 모두 잡았습니다.
 
-*   **비동기 동기화**: `DOMContentLoaded` 체인에서 언어 설정(`loadLocaleSettings`)을 `await`로 명시적 순서를 보장한 후 테이블을 렌더링하도록 변경하여 빈 화면 현상을 원천 차단했습니다.
-*   **레이아웃 통일**: 가변적이던 모니터링 카드의 CSS Grid를 `grid-template-columns: repeat(2, 1fr)`로 표준화하여 대시보드의 시각적 안정성을 확보했습니다.
+### C. Async Flow Control & Layout Standardization
+
+* **비동기 타이밍 이슈 해결**: JS의 `DOMContentLoaded` 이벤트 블록 내에서 비동기 설정 데이터 로딩 함수에 `await` 락(Lock)을 명시적으로 걸어, 초기 상태 데이터가 완전 구성된 후 DOM 렌더링 트리가 구동되도록 제어했습니다.
+* **레이아웃 반응형 대응**: 인프라 모니터링 카드가 디바이스 해상도나 반응형 브레이크포인트에 따라 파편화되어 렌더링되던 이슈를 CSS Grid의 `grid-template-columns: repeat(2, 1fr)` 기반 규격화 구조로 통일하여 예측 가능한 UI/UX를 제공했습니다.
 
 ---
 
-## 4. 성과 및 엔지니어링 교훈 (Takeaways)
+## 3. 결과 및 엔지니어링 교훈 (Takeaways)
 
-### 📈 성과 (Impact)
-1.  **유지보수성 향상 (Zero-FE-Change)**: 새로운 LLM 모델이 추가되거나 단종되더라도, 프론트엔드 코드 수정 및 배포 없이 백엔드 설정만으로 전체 UI 환경이 자동으로 동기화됩니다.
-2.  **데이터 정합성 확보**: API 호출 실패 시의 롤백 메커니즘을 통해 실제 LLM 사용량 모니터링 모듈의 신뢰도를 99.9% 이상으로 끌어올렸습니다.
-3.  **사용자 경험(UX) 개선**: 프론트엔드의 비동기 로딩 레이스 컨디션을 해결하여 화면 깜빡임과 빈 데이터 표시 버그를 완벽히 제거했습니다.
+### 3.1. 도입 성과
+1. **운영 생산성 향상 (Zero-Frontend Deploy)**: 새로운 제미나이 모델(예: 3.7 버전 출시 등)이 추가되어도 프론트엔드 코드 수정 및 빌드 과정 없이, 백엔드 설정을 통해 시스템 전체에 즉시 동기화됩니다.
+2. **모니터링 데이터 정합성 확보**: API 예외 상황(Timeout, 5xx 에러) 발생 시 쿼터 롤백이 즉시 실행되어 실사용량 계산 오차를 무효화했습니다.
+3. **사용자 경험(UX) 개선**: 프론트엔드의 비동기 Race Condition을 원천 차단하여 빈 화면 현상을 해결하였고, 전사 시스템의 visual key를 일관성 있게 정립했습니다.
 
-### 💡 엔지니어링 교훈 (Lessons Learned)
-*   **"기술 부채는 코드의 양이 아니라 파편화된 상태(Truth)에서 온다."**
-    설정 데이터가 프론트엔드 여러 파일에 분산되어 있을 때 발생하는 스파게티 구조를 **SSOT 원칙**으로 통합함으로써 시스템 관리 비용을 극적으로 낮출 수 있었습니다.
-*   **"외부 의존성이 높은 API 시스템은 반드시 보상 트랜잭션(Compensation logic)을 고려해야 한다."**
-    타사(Third-party) API는 언제든 실패할 수 있습니다. 시스템 내부의 상태(쿼터 등)를 변경할 때는 성공을 가정한 선차감 구조에 대응하는 **롤백 및 복구 전략**이 필수적이라는 점을 재확인했습니다.
+### 3.2. 엔지니어링 레슨
+* **"상태는 가급적 한 곳에서 관리하라 (SSOT)"**: 프론트엔드와 백엔드 간에 공유되어야 하는 도메인 지식(모델 목록, 컬러, 제한 사항)이 클라이언트에 분산되면 반드시 기술 부채로 돌아옵니다.
+* **외부 API 의존성 시스템의 방어적 설계**: 분산 환경 및 외부 Third-party API 연동 시에는 '성공' 케이스뿐만 아니라 '실패' 시 상태 보상(Rollback) 로직을 아키텍처 연동 단계부터 고려해야 데이터의 정합성을 지킬 수 있습니다.
