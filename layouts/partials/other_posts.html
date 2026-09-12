@@ -1,5 +1,25 @@
 {{ $currentPost := . }}
-{{ $category := .Params.category | default "PickSafe" }}
+{{ $category := "PickSafe" }}
+{{ with .Params.category }}
+  {{ if reflect.IsSlice . }}
+    {{ $category = index . 0 }}
+  {{ else }}
+    {{ $category = . }}
+  {{ end }}
+{{ else }}
+  {{ with .Params.categories }}
+    {{ if reflect.IsSlice . }}
+      {{ $category = index . 0 }}
+    {{ else }}
+      {{ $category = . }}
+    {{ end }}
+  {{ else }}
+    {{ with .CurrentSection }}
+      {{ $category = .Title }}
+    {{ end }}
+  {{ end }}
+{{ end }}
+
 {{ $relatedPosts := where .Site.RegularPages "Params.category" $category }}
 {{ if eq (len $relatedPosts) 0 }}
   {{ $relatedPosts = where .Site.RegularPages "Section" .Section }}

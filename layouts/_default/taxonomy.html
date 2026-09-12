@@ -41,7 +41,7 @@
       <article class="nb-post-item" data-title="{{ .Title }}" data-tags="{{ with .Params.tags }}{{ delimit . " " }}{{ end }}">
         <div class="nb-post-main">
           <div class="nb-post-meta-top">
-            <span class="nb-post-cat">{{ .Params.category | default "Tech" }}</span>
+            <span class="nb-post-cat">{{ $c := .Params.category }}{{ if reflect.IsSlice $c }}{{ $c = index $c 0 }}{{ end }}{{ $c | default "Tech" }}</span>
             <span class="nb-post-date">{{ .Date.Format "2006.01.02 15:04" }}</span>
           </div>
           <h3 class="nb-post-title">

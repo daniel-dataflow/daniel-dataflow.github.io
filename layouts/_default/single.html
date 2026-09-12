@@ -9,7 +9,10 @@
     {{ with .CurrentSection }}
       <a href="{{ .RelPermalink }}">{{ .Title }}</a>
     {{ else }}
-      <a href="/categories/{{ .Params.category | urlize }}/">{{ .Params.category | default "PickSafe" }}</a>
+      {{ $cat := .Params.category }}
+      {{ if reflect.IsSlice $cat }}{{ $cat = index $cat 0 }}{{ end }}
+      {{ $cat = $cat | default "PickSafe" }}
+      <a href="/categories/{{ $cat | urlize }}/">{{ $cat }}</a>
     {{ end }}
     <span class="nb-bc-sep">&gt;</span>
     <span class="nb-bc-current">{{ .Title | truncate 30 }}</span>
@@ -22,7 +25,9 @@
         {{ with .CurrentSection }}
           <a href="{{ .RelPermalink }}">{{ .Title }}</a>
         {{ else }}
-          {{ .Params.category | default "PickSafe" }}
+          {{ $cat := .Params.category }}
+          {{ if reflect.IsSlice $cat }}{{ $cat = index $cat 0 }}{{ end }}
+          {{ $cat | default "PickSafe" }}
         {{ end }}
       </span>
     </div>
