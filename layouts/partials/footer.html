@@ -1,19 +1,44 @@
 <footer class="nb-footer">
-  <div class="nb-footer-container">
-    <div class="nb-footer-left">
-      <p class="nb-copy">&copy; {{ now.Format "2006" }} <a href="/">{{ .Site.Title }}</a>. All rights reserved.</p>
-      <p class="nb-powered">Powered by <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> · Naver Blog Engine Theme by Daniel</p>
-    </div>
-    <div class="nb-footer-right">
-      <button id="nb-back-to-top" class="nb-top-btn" title="맨 위로 이동">
-        <i class="fa-solid fa-arrow-up"></i> TOP
-      </button>
-    </div>
+  <div class="nb-footer-inner">
+    <p class="nb-footer-copy">
+      &copy; {{ now.Format "2006" }} <a href="/">{{ .Site.Title }}</a>. All rights reserved.
+    </p>
+    <p class="nb-footer-powered">
+      Powered by <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> &middot; Naver Blog Engine Theme by Daniel
+    </p>
   </div>
 </footer>
 
-<!-- Toast Message Container -->
-<div id="nb-toast" class="nb-toast"></div>
+<!-- Mermaid.js for Architecture & Flowchart Diagrams -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  if (typeof mermaid !== "undefined") {
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "default",
+      securityLevel: "loose",
+      fontFamily: "Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif"
+    });
 
-<!-- JavaScript -->
-<script src="/js/naver_blog.js"></script>
+    // Support code blocks highlighted by Hugo Chroma (code.language-mermaid)
+    const chromaBlocks = document.querySelectorAll('code.language-mermaid, code[data-lang="mermaid"], pre.chroma code.language-mermaid');
+    chromaBlocks.forEach(function (codeBlock) {
+      const container = codeBlock.closest(".highlight") || codeBlock.closest("pre");
+      if (container) {
+        const rawText = codeBlock.textContent.trim();
+        const chartWrapper = document.createElement("div");
+        chartWrapper.className = "mermaid";
+        chartWrapper.textContent = rawText;
+        container.parentNode.insertBefore(chartWrapper, container);
+        container.remove();
+        try {
+          mermaid.run({ nodes: [chartWrapper] });
+        } catch (e) {
+          console.warn("Mermaid render error:", e);
+        }
+      }
+    });
+  }
+});
+</script>
