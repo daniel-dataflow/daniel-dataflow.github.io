@@ -300,6 +300,72 @@ body {
   outline: none;
 }
 
+/* ─── Sidebar Batch Action Bar ─── */
+.sidebar-batch-action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(15, 23, 42, 0.5);
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.8rem;
+}
+
+.select-all-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #94a3b8;
+  cursor: pointer;
+  font-weight: 600;
+  user-select: none;
+  font-size: 0.78rem;
+}
+
+.select-all-label:hover {
+  color: #ffffff;
+}
+
+.select-all-label input[type="checkbox"],
+.ym-folder-chk,
+.post-item-chk {
+  appearance: auto;
+  width: 15px;
+  height: 15px;
+  accent-color: var(--nb-green);
+  cursor: pointer;
+}
+
+.btn-batch-del {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-batch-del:hover:not(:disabled) {
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #dc2626;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+}
+
+.btn-batch-del:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.04);
+  color: #64748b;
+}
+
 .sidebar-items-list {
   flex: 1;
   overflow-y: auto;
@@ -313,11 +379,11 @@ body {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
-  padding: 10px 12px;
+  padding: 8px 10px;
   cursor: pointer;
   transition: all 0.2s;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 8px;
 }
@@ -325,6 +391,18 @@ body {
 .post-item-card:hover, .post-item-card.active {
   border-color: var(--accent-cyan);
   background: #334155;
+}
+
+.post-item-card.selected {
+  background: rgba(3, 199, 90, 0.08);
+  border-color: rgba(3, 199, 90, 0.4);
+}
+
+.post-chk-wrap {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 2px;
 }
 
 .post-item-info {
@@ -1001,12 +1079,36 @@ body {
   gap: 4px !important;
 }
 
+/* ─── Naver Blog Article Body & Mermaid (100% Theme Match) ─── */
 .nb-article-body {
-  color: #333333 !important;
+  color: #24292f !important;
   font-size: 1.02rem !important;
   line-height: 1.85 !important;
   margin: 28px 0 !important;
   word-break: break-word !important;
+  font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif !important;
+}
+
+.nb-article-body p {
+  margin-bottom: 18px !important;
+  line-height: 1.85 !important;
+  color: #333333 !important;
+}
+
+.nb-article-body h1,
+.nb-article-body h2,
+.nb-article-body h3,
+.nb-article-body h4 {
+  color: #111827 !important;
+  font-weight: 800 !important;
+  line-height: 1.4 !important;
+}
+
+.nb-article-body h1 {
+  font-size: 1.65rem !important;
+  margin: 40px 0 20px !important;
+  padding-bottom: 10px !important;
+  border-bottom: 1px solid #e2e8f0 !important;
 }
 
 .nb-article-body h2 {
@@ -1014,17 +1116,145 @@ body {
   margin: 36px 0 16px !important;
   border-left: 4px solid #03c75a !important;
   padding-left: 12px !important;
+  color: #111827 !important;
+}
+
+.nb-article-body h3 {
+  font-size: 1.15rem !important;
+  margin: 28px 0 12px !important;
+  color: #1e293b !important;
+}
+
+.nb-article-body h4 {
+  font-size: 1.05rem !important;
+  margin: 22px 0 10px !important;
+  color: #334155 !important;
+}
+
+.nb-article-body hr {
+  height: 1px !important;
+  background: #e2e8f0 !important;
+  border: none !important;
+  margin: 36px 0 !important;
+}
+
+.nb-article-body ul,
+.nb-article-body ol {
+  padding-left: 24px !important;
+  margin: 16px 0 20px !important;
+  color: #333333 !important;
+}
+
+.nb-article-body li {
+  margin-bottom: 8px !important;
+  line-height: 1.75 !important;
+}
+
+.nb-article-body strong {
+  font-weight: 700 !important;
+  color: #111827 !important;
 }
 
 .nb-article-body blockquote {
   border-left: 4px solid #03c75a !important;
   background: #f8fafc !important;
   padding: 16px 20px !important;
-  margin: 22px 0 !important;
+  margin: 24px 0 !important;
   color: #1e293b !important;
   border-radius: 0 8px 8px 0 !important;
   font-size: 0.98rem !important;
   font-weight: 500 !important;
+}
+
+.nb-article-body blockquote p:last-child {
+  margin-bottom: 0 !important;
+}
+
+.nb-article-body table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  margin: 24px 0 !important;
+  font-size: 0.92rem !important;
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+}
+
+.nb-article-body th {
+  background: #f8fafc !important;
+  color: #1e293b !important;
+  font-weight: 700 !important;
+  padding: 12px 14px !important;
+  border: 1px solid #e2e8f0 !important;
+  text-align: left !important;
+}
+
+.nb-article-body td {
+  padding: 11px 14px !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #334155 !important;
+}
+
+.nb-article-body tr:nth-child(even) td {
+  background: #fcfdfe !important;
+}
+
+.nb-article-body pre {
+  background: #1e293b !important;
+  color: #f8fafc !important;
+  padding: 20px 22px !important;
+  border-radius: 10px !important;
+  margin: 24px 0 !important;
+  font-family: 'JetBrains Mono', Consolas, Menlo, monospace !important;
+  font-size: 0.88rem !important;
+  line-height: 1.65 !important;
+  overflow-x: auto !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1) !important;
+}
+
+.nb-article-body code {
+  background: rgba(3, 199, 90, 0.1) !important;
+  color: #029a45 !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  font-size: 0.88em !important;
+  font-family: 'JetBrains Mono', Consolas, Menlo, monospace !important;
+}
+
+.nb-article-body pre code {
+  background: transparent !important;
+  color: inherit !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  font-size: 0.88rem !important;
+}
+
+.nb-article-body img {
+  max-width: 100% !important;
+  height: auto !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08) !important;
+  margin: 20px auto !important;
+  display: block !important;
+}
+
+/* ─── Mermaid Architecture & Flowchart Diagrams ─── */
+.mermaid {
+  text-align: center !important;
+  margin: 28px auto !important;
+  padding: 24px 20px !important;
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+  overflow-x: auto !important;
+}
+
+.mermaid svg {
+  max-width: 100% !important;
+  height: auto !important;
+  display: inline-block !important;
 }
 
 .nb-article-tags-wrap {
@@ -1207,10 +1437,24 @@ body {
   border-color: rgba(56, 189, 248, 0.4);
 }
 
-.ym-folder-title {
+.ym-folder-left {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: 1;
+}
+
+.ym-folder-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ym-chk-wrap {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 2px;
 }
 
 .ym-arrow {
@@ -1252,4 +1496,25 @@ body {
   flex-direction: column;
   gap: 5px;
   padding: 6px 0 4px 8px;
+}
+
+/* ─── AI Model Refresh Button ─── */
+.btn-model-refresh {
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #38bdf8;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s;
+}
+
+.btn-model-refresh:hover {
+  background: #38bdf8;
+  color: #0f172a;
 }

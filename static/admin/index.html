@@ -11,7 +11,7 @@
   <!-- Highlight.js Theme -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
   <!-- Admin Stylesheet -->
-  <link rel="stylesheet" href="/admin/admin.css?v=20260831_v8">
+  <link rel="stylesheet" href="/admin/admin.css?v=20260914_v1">
 </head>
 <body>
 
@@ -90,6 +90,15 @@
       </div>
       <div class="sidebar-search-bar">
         <input type="text" id="postSearchInput" class="search-input" placeholder="🔍 포스트 검색..." oninput="filterPostsList()">
+      </div>
+      <div class="sidebar-batch-action-bar" id="sidebarBatchActionBar">
+        <label class="select-all-label" title="현재 목록 전체 선택">
+          <input type="checkbox" id="chkSelectAllPosts" onchange="toggleSelectAllPosts(this.checked)">
+          <span>전체 선택</span>
+        </label>
+        <button type="button" class="btn-batch-del" id="btnBatchDelPosts" onclick="executeBatchDeletePosts()" disabled title="선택된 포스트 일괄 삭제">
+          <i class="fa-regular fa-trash-can"></i> 선택 삭제 (<span id="batchDelCountNum">0</span>)
+        </button>
       </div>
       <div class="sidebar-items-list" id="sidebarItemsList">
         <div style="padding: 20px; text-align: center; color: #94a3b8;">포스트 목록 불러오는 중...</div>
@@ -352,15 +361,23 @@
           </div>
 
           <div class="form-group" style="margin-bottom: 0;">
-            <label style="margin-bottom: 6px;">🤖 AI 모델 선택 (기본: 3.5 Flash):</label>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label style="margin-bottom: 0;">🤖 AI 모델 선택 (기본: 3.8 Flash):</label>
+              <button type="button" class="btn-model-refresh" onclick="refreshGeminiModels(true)" title="Google API에서 지원 모델 실시간 새로고침">
+                <i class="fa-solid fa-arrows-rotate"></i> 새로고침
+              </button>
+            </div>
             <select id="geminiModelSelect" class="form-input" onchange="handleModelChange(this.value)" style="cursor: pointer; background: #0f172a;">
-              <option value="gemini-3.5-flash" selected>⚡ Gemini 3.5 Flash (권장 / 기본값)</option>
-              <option value="gemini-3.5-flash-lite">🚀 Gemini 3.5 Flash-Lite (초고속)</option>
-              <option value="gemini-3.6-flash">✨ Gemini 3.6 Flash (최신 모델)</option>
-              <option value="gemini-3.1-flash-lite">🔹 Gemini 3.1 Flash-Lite</option>
+              <option value="gemini-3.8-flash" selected>⚡ Gemini 3.8 Flash (최신 / 권장 기본값)</option>
+              <option value="gemini-3.7-flash">⚡ Gemini 3.7 Flash (고성능)</option>
+              <option value="gemini-3.6-flash">⚡ Gemini 3.6 Flash</option>
+              <option value="gemini-3.5-flash">⚡ Gemini 3.5 Flash (표준)</option>
+              <option value="gemini-3.1-pro">🧠 Gemini 3.1 Pro (심층 추론)</option>
+              <option value="gemini-3.5-flash-lite">🚀 Gemini 3.5 Flash-Lite (경량)</option>
+              <option value="gemini-3.1-flash-lite">🚀 Gemini 3.1 Flash-Lite (초경량)</option>
               <option value="__custom__">⚙️ 직접 모델명 입력...</option>
             </select>
-            <input type="text" id="geminiCustomModelInput" class="form-input" style="display: none; margin-top: 6px;" placeholder="예: gemini-3.5-flash">
+            <input type="text" id="geminiCustomModelInput" class="form-input" style="display: none; margin-top: 6px;" placeholder="예: gemini-3.8-flash">
           </div>
         </div>
 
@@ -399,6 +416,6 @@
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-  <script src="/admin/admin.js?v=20260831_v12"></script>
+  <script src="/admin/admin.js?v=20260914_v1"></script>
 </body>
 </html>

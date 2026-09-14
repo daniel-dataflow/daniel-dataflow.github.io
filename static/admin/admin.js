@@ -12,6 +12,7 @@ let githubPat = localStorage.getItem('gh_admin_pat') || '';
 let currentEditingPost = null; // { path, sha, category, filename, title }
 let allPublishedPosts = [];
 let allCategories = [];
+let selectedPostPaths = new Set();
 let isEditorDirty = false;
 
 // ─── 1. Initialization ───
@@ -26,9 +27,9 @@ function initMermaid() {
   if (typeof mermaid !== 'undefined') {
     mermaid.initialize({
       startOnLoad: false,
-      theme: 'dark',
+      theme: 'default',
       securityLevel: 'loose',
-      fontFamily: 'Pretendard, Inter, sans-serif'
+      fontFamily: 'Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif'
     });
   }
 }
@@ -242,6 +243,9 @@ async function loadPublishedPosts() {
     const countEl = document.getElementById('postCountNum');
     if (countEl) countEl.textContent = allPublishedPosts.length;
 
+    // Filter out deleted posts from selection
+    selectedPostPaths = new Set([...selectedPostPaths].filter(p => allPublishedPosts.some(post => post.path === p)));
+
     renderPostsList();
   } catch (e) {
     console.error('포스트 목록 로드 실패:', e);
@@ -264,6 +268,7 @@ function renderPostsList() {
 
   if (allPublishedPosts.length === 0) {
     listContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #94a3b8;">발행된 글이 없습니다.</div>';
+    updateSelectionUI();
     return;
   }
 
@@ -306,14 +311,17 @@ function renderPostsList() {
     const isExpanded = expandedFolders.has(ym);
 
     const postsHtml = posts.map(post => `
-      <div class="post-item-card ${currentEditingPost && currentEditingPost.path === post.path ? 'active' : ''}" data-title="${escapeHtml(post.name.toLowerCase())}" data-cat="${escapeHtml(post.category.toLowerCase())}">
+      <div class="post-item-card ${currentEditingPost && currentEditingPost.path === post.path ? 'active' : ''} ${selectedPostPaths.has(post.path) ? 'selected' : ''}" data-title="${escapeHtml(post.name.toLowerCase())}" data-cat="${escapeHtml(post.category.toLowerCase())}" data-path="${escapeHtml(post.path)}">
+        <label class="post-chk-wrap" title="선택" onclick="event.stopPropagation()">
+          <input type="checkbox" class="post-item-chk" data-path="${escapeHtml(post.path)}" ${selectedPostPaths.has(post.path) ? 'checked' : ''} onchange="togglePostItemSelect('${escapeHtml(post.path)}', this.checked)">
+        </label>
         <div class="post-item-info" onclick="loadPostContent('${post.path}', '${post.sha}', '${post.category}', '${post.name}')">
           <div class="post-item-title">${escapeHtml(post.name.replace('.md', ''))}</div>
           <div class="post-item-meta">
             <span class="post-cat-pill">${escapeHtml(post.category)}</span>
           </div>
         </div>
-        <button type="button" class="post-del-btn" title="포스트 삭제" onclick="deletePostFromGitHub('${post.path}', '${post.sha}', '${post.name}', event)">
+        <button type="button" class="post-del-btn" title="포스트 개별 삭제" onclick="deletePostFromGitHub('${post.path}', '${post.sha}', '${post.name}', event)">
           <i class="fa-regular fa-trash-can"></i>
         </button>
       </div>
@@ -321,13 +329,18 @@ function renderPostsList() {
 
     html += `
       <div class="ym-folder-group" id="folder-group-${ym}" data-ym="${ym}">
-        <div class="ym-folder-header" onclick="toggleYmFolder('${ym}')">
-          <div class="ym-folder-title">
+        <div class="ym-folder-header">
+          <div class="ym-folder-left" onclick="toggleYmFolder('${ym}')">
             <i class="fa-solid fa-caret-right ym-arrow ${isExpanded ? 'rotated' : ''}" id="arrow-${ym}"></i>
             <i class="fa-solid fa-folder ym-folder-icon"></i>
             <span class="ym-name">${ym}</span>
           </div>
-          <span class="ym-count-badge">${posts.length}</span>
+          <div class="ym-folder-right">
+            <span class="ym-count-badge">${posts.length}</span>
+            <label class="ym-chk-wrap" title="${ym} 전체 선택" onclick="event.stopPropagation()">
+              <input type="checkbox" class="ym-folder-chk" data-ym="${ym}" onchange="toggleYmFolderSelect('${ym}', this.checked)">
+            </label>
+          </div>
         </div>
         <div class="ym-folder-items" id="items-${ym}" style="display: ${isExpanded ? 'flex' : 'none'};">
           ${postsHtml}
@@ -337,6 +350,147 @@ function renderPostsList() {
   });
 
   listContainer.innerHTML = html;
+  updateSelectionUI();
+}
+
+function updateSelectionUI() {
+  const countEl = document.getElementById('batchDelCountNum');
+  const btnBatchDel = document.getElementById('btnBatchDelPosts');
+  const chkAll = document.getElementById('chkSelectAllPosts');
+
+  const total = allPublishedPosts.length;
+  const selectedCount = selectedPostPaths.size;
+
+  if (countEl) countEl.textContent = selectedCount;
+  if (btnBatchDel) btnBatchDel.disabled = (selectedCount === 0);
+
+  if (chkAll) {
+    chkAll.checked = (total > 0 && selectedCount === total);
+    chkAll.indeterminate = (selectedCount > 0 && selectedCount < total);
+  }
+
+  // Update folder group checkboxes
+  const groups = {};
+  allPublishedPosts.forEach(p => {
+    const ym = extractYearMonth(p.name);
+    if (!groups[ym]) groups[ym] = [];
+    groups[ym].push(p.path);
+  });
+
+  Object.keys(groups).forEach(ym => {
+    const folderChk = document.querySelector(`.ym-folder-chk[data-ym="${ym}"]`);
+    if (folderChk) {
+      const paths = groups[ym];
+      const selectedInGroup = paths.filter(p => selectedPostPaths.has(p)).length;
+      folderChk.checked = (paths.length > 0 && selectedInGroup === paths.length);
+      folderChk.indeterminate = (selectedInGroup > 0 && selectedInGroup < paths.length);
+    }
+  });
+
+  // Update post item card classes and checkboxes
+  document.querySelectorAll('.post-item-card').forEach(card => {
+    const path = card.dataset.path;
+    const chk = card.querySelector('.post-item-chk');
+    if (path && chk) {
+      const isSel = selectedPostPaths.has(path);
+      chk.checked = isSel;
+      card.classList.toggle('selected', isSel);
+    }
+  });
+}
+
+function toggleSelectAllPosts(checked) {
+  if (checked) {
+    allPublishedPosts.forEach(p => selectedPostPaths.add(p.path));
+  } else {
+    selectedPostPaths.clear();
+  }
+  updateSelectionUI();
+}
+
+function toggleYmFolderSelect(ym, checked) {
+  allPublishedPosts.forEach(p => {
+    if (extractYearMonth(p.name) === ym) {
+      if (checked) {
+        selectedPostPaths.add(p.path);
+      } else {
+        selectedPostPaths.delete(p.path);
+      }
+    }
+  });
+  updateSelectionUI();
+}
+
+function togglePostItemSelect(path, checked) {
+  if (checked) {
+    selectedPostPaths.add(path);
+  } else {
+    selectedPostPaths.delete(path);
+  }
+  updateSelectionUI();
+}
+
+async function executeBatchDeletePosts() {
+  if (selectedPostPaths.size === 0) return;
+
+  const count = selectedPostPaths.size;
+  if (!confirm(`정말로 선택한 ${count}개의 포스트를 GitHub 저장소에서 영구 삭제하시겠습니까?\n\n⚠️ 삭제된 파일은 복구할 수 없습니다.`)) {
+    return;
+  }
+
+  const postsToDelete = allPublishedPosts.filter(p => selectedPostPaths.has(p.path));
+  let successCount = 0;
+  let failCount = 0;
+
+  const btnBatchDel = document.getElementById('btnBatchDelPosts');
+  const origText = btnBatchDel ? btnBatchDel.innerHTML : '';
+  if (btnBatchDel) {
+    btnBatchDel.disabled = true;
+  }
+
+  for (let i = 0; i < postsToDelete.length; i++) {
+    const post = postsToDelete[i];
+    if (btnBatchDel) {
+      btnBatchDel.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> 삭제 중 (${i + 1}/${count})`;
+    }
+    showToast(`🗑️ (${i + 1}/${count}) 삭제 중: ${post.name}...`);
+
+    try {
+      const payload = {
+        message: `Batch delete post: ${post.name} (via In-Repo Web Admin Studio)`,
+        sha: post.sha,
+        branch: 'main'
+      };
+
+      const res = await ghRequest(`contents/${post.path}`, {
+        method: 'DELETE',
+        body: JSON.stringify(payload)
+      });
+
+      if (res.status === 200 || res.status === 204) {
+        successCount++;
+        selectedPostPaths.delete(post.path);
+        if (currentEditingPost && currentEditingPost.path === post.path) {
+          document.getElementById('markdownEditor').value = '';
+          currentEditingPost = null;
+          document.getElementById('currentDocStatusBadge').textContent = '삭제됨';
+        }
+      } else {
+        failCount++;
+        console.warn(`Failed to delete ${post.name}:`, res.status);
+      }
+    } catch (e) {
+      failCount++;
+      console.error(`Error deleting ${post.name}:`, e);
+    }
+  }
+
+  if (btnBatchDel) {
+    btnBatchDel.innerHTML = origText;
+  }
+
+  await loadPublishedPosts();
+  showToast(`🎉 일괄 삭제 완료: 성공 ${successCount}건${failCount > 0 ? `, 실패 ${failCount}건` : ''}`);
 }
 
 function toggleYmFolder(ym) {
@@ -426,14 +580,17 @@ function filterPostsList() {
 function switchSidebarTab(tab) {
   const tabPosts = document.getElementById('tabPosts');
   const tabCats = document.getElementById('tabCategories');
+  const batchBar = document.getElementById('sidebarBatchActionBar');
 
   if (tab === 'posts') {
     tabPosts.classList.add('active');
     tabCats.classList.remove('active');
+    if (batchBar) batchBar.style.display = 'flex';
     renderPostsList();
   } else {
     tabPosts.classList.remove('active');
     tabCats.classList.add('active');
+    if (batchBar) batchBar.style.display = 'none';
     renderCategoriesList();
   }
 }
@@ -1449,6 +1606,118 @@ tags: ["Architecture", "Backend", "Optimization"]
 {{notes}}
 `;
 
+const DEFAULT_GEMINI_MODELS = [
+  { id: 'gemini-3.8-flash', name: '⚡ Gemini 3.8 Flash (최신 / 권장 기본값)' },
+  { id: 'gemini-3.7-flash', name: '⚡ Gemini 3.7 Flash (고성능)' },
+  { id: 'gemini-3.6-flash', name: '⚡ Gemini 3.6 Flash' },
+  { id: 'gemini-3.5-flash', name: '⚡ Gemini 3.5 Flash (표준)' },
+  { id: 'gemini-3.1-pro', name: '🧠 Gemini 3.1 Pro (심층 추론)' },
+  { id: 'gemini-3.5-flash-lite', name: '🚀 Gemini 3.5 Flash-Lite (경량)' },
+  { id: 'gemini-3.1-flash-lite', name: '🚀 Gemini 3.1 Flash-Lite (초경량)' },
+];
+
+const DEPRECATED_OR_UNSUPPORTED_MODELS = [
+  'gemini-1.0-pro',
+  'gemini-1.0-pro-vision',
+  'gemini-pro',
+  'gemini-pro-vision',
+  'embedding-001',
+  'text-embedding-004',
+  'aqa',
+  'bison',
+  'chat-bison'
+];
+
+async function refreshGeminiModels(manualAlert = false) {
+  const apiKey = (document.getElementById('geminiApiKeyInput')?.value || '').trim() || localStorage.getItem('gemini_api_key') || '';
+  const modelSelect = document.getElementById('geminiModelSelect');
+  if (!modelSelect) return;
+
+  if (!apiKey) {
+    if (manualAlert) alert('Gemini API Key를 먼저 입력해 주세요.');
+    return;
+  }
+
+  const btnRefresh = document.querySelector('.btn-model-refresh');
+  if (btnRefresh) btnRefresh.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 로딩 중...';
+
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+    if (res.status === 200) {
+      const data = await res.json();
+      const rawModels = data.models || [];
+
+      // Filter: must support 'generateContent', and exclude deprecated/embedding models
+      const validModels = rawModels.filter(m => {
+        const name = (m.name || '').replace('models/', '');
+        const methods = m.supportedGenerationMethods || [];
+        if (!methods.includes('generateContent')) return false;
+
+        const lower = name.toLowerCase();
+        for (const dep of DEPRECATED_OR_UNSUPPORTED_MODELS) {
+          if (lower.includes(dep)) return false;
+        }
+        if (lower.includes('embedding') || lower.includes('aqa')) return false;
+        return true;
+      });
+
+      if (validModels.length > 0) {
+        const sorted = validModels.map(m => m.name.replace('models/', ''));
+        
+        // Ensure gemini-3.8-flash is present on top
+        if (!sorted.includes('gemini-3.8-flash')) {
+          sorted.unshift('gemini-3.8-flash');
+        }
+
+        const currentVal = modelSelect.value || localStorage.getItem('gemini_selected_model') || 'gemini-3.8-flash';
+        modelSelect.innerHTML = '';
+
+        sorted.forEach(modelId => {
+          const opt = document.createElement('option');
+          opt.value = modelId;
+          if (modelId === 'gemini-3.8-flash') {
+            opt.textContent = `⚡ ${modelId} (최신 / 권장 기본값)`;
+          } else if (modelId.includes('flash')) {
+            opt.textContent = `⚡ ${modelId}`;
+          } else if (modelId.includes('pro')) {
+            opt.textContent = `🧠 ${modelId}`;
+          } else {
+            opt.textContent = `✨ ${modelId}`;
+          }
+          modelSelect.appendChild(opt);
+        });
+
+        // Add custom option
+        const customOpt = document.createElement('option');
+        customOpt.value = '__custom__';
+        customOpt.textContent = '⚙️ 직접 모델명 입력...';
+        modelSelect.appendChild(customOpt);
+
+        if (Array.from(modelSelect.options).some(o => o.value === currentVal)) {
+          modelSelect.value = currentVal;
+        } else {
+          modelSelect.value = 'gemini-3.8-flash';
+        }
+
+        if (manualAlert) {
+          showToast(`✨ 최신 지원 모델 ${sorted.length}개를 성공적으로 갱신했습니다.`);
+        }
+      }
+    } else {
+      if (manualAlert) {
+        const err = await res.json().catch(() => ({}));
+        alert('모델 목록 조회 실패: ' + (err.error?.message || res.statusText));
+      }
+    }
+  } catch (e) {
+    if (manualAlert) {
+      alert('모델 조회 중 네트워크 오류가 발생했습니다: ' + e.message);
+    }
+  } finally {
+    if (btnRefresh) btnRefresh.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> 새로고침';
+  }
+}
+
 function openAiDraftModal() {
   const modal = document.getElementById('aiModal');
   modal.style.display = 'flex';
@@ -1460,8 +1729,8 @@ function openAiDraftModal() {
   const badge = document.getElementById('apiKeySaveBadge');
   if (badge) badge.textContent = savedKey ? '✓ 브라우저에 저장됨' : '';
 
-  // Model Selection (Default: gemini-3.5-flash)
-  const savedModel = localStorage.getItem('gemini_selected_model') || 'gemini-3.5-flash';
+  // Model Selection (Default: gemini-3.8-flash)
+  const savedModel = localStorage.getItem('gemini_selected_model') || 'gemini-3.8-flash';
   const modelSelect = document.getElementById('geminiModelSelect');
   const customInput = document.getElementById('geminiCustomModelInput');
 
@@ -1503,6 +1772,11 @@ function openAiDraftModal() {
       extraLabel.textContent = '📝 참조할 개발 노트 / 기술 요약 내용:';
     }
   }
+
+  // Silently refresh model list in background if key is present
+  if (savedKey) {
+    refreshGeminiModels(false);
+  }
 }
 
 function handleModelChange(val) {
@@ -1533,9 +1807,9 @@ function saveAiPromptSettingsManual() {
   const key = (document.getElementById('geminiApiKeyInput')?.value || '').trim();
   const prompt = (document.getElementById('geminiPromptTemplateInput')?.value || '').trim();
   const modelSelect = document.getElementById('geminiModelSelect');
-  let model = modelSelect ? modelSelect.value : 'gemini-3.5-flash';
+  let model = modelSelect ? modelSelect.value : 'gemini-3.8-flash';
   if (model === '__custom__') {
-    model = (document.getElementById('geminiCustomModelInput')?.value || '').trim() || 'gemini-3.5-flash';
+    model = (document.getElementById('geminiCustomModelInput')?.value || '').trim() || 'gemini-3.8-flash';
   }
 
   if (!prompt) {
@@ -1566,9 +1840,9 @@ async function generateAiDraftWithGemini() {
   const statusEl = document.getElementById('aiDraftStatus');
 
   const modelSelect = document.getElementById('geminiModelSelect');
-  let chosenModel = modelSelect ? modelSelect.value : 'gemini-3.5-flash';
+  let chosenModel = modelSelect ? modelSelect.value : 'gemini-3.8-flash';
   if (chosenModel === '__custom__') {
-    chosenModel = (document.getElementById('geminiCustomModelInput')?.value || '').trim() || 'gemini-3.5-flash';
+    chosenModel = (document.getElementById('geminiCustomModelInput')?.value || '').trim() || 'gemini-3.8-flash';
   }
 
   if (!apiKey) {
@@ -1615,8 +1889,8 @@ async function generateAiDraftWithGemini() {
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 작성 중...';
   }
 
-  // Candidate fallback list: chosenModel first, then alternatives
-  const candidateModels = [chosenModel, 'gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite']
+  // Candidate fallback list: chosenModel first, then latest 3.8 down to 3.5
+  const candidateModels = [chosenModel, 'gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3.5-flash']
     .filter((m, idx, arr) => m && arr.indexOf(m) === idx);
 
   let success = false;
@@ -1856,20 +2130,27 @@ function renderLivePreview() {
       }
     });
 
-    // Render Mermaid diagrams
+    // Render Mermaid diagrams (100% theme match with blog)
     if (typeof mermaid !== 'undefined') {
-      const mermaidBlocks = viewport.querySelectorAll('code.language-mermaid, pre.mermaid');
+      const mermaidBlocks = viewport.querySelectorAll('code.language-mermaid, pre.mermaid, code[data-lang="mermaid"]');
       mermaidBlocks.forEach((block, idx) => {
-        const graphDef = block.textContent;
+        const graphDef = block.textContent.trim();
         const container = document.createElement('div');
-        container.className = 'mermaid-container';
+        container.className = 'mermaid';
         const id = `mermaid-prev-${idx}-${Date.now()}`;
         try {
           mermaid.render(id, graphDef).then(({ svg }) => {
             container.innerHTML = svg;
-            block.parentNode.replaceChild(container, block);
-          }).catch(e => {});
-        } catch (e) {}
+            const targetParent = block.closest('.highlight') || block.closest('pre') || block;
+            if (targetParent && targetParent.parentNode) {
+              targetParent.parentNode.replaceChild(container, targetParent);
+            }
+          }).catch(e => {
+            console.warn("Mermaid render error:", e);
+          });
+        } catch (e) {
+          console.warn("Mermaid render error:", e);
+        }
       });
     }
   } else {
