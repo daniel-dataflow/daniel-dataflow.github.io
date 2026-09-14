@@ -2965,3 +2965,21 @@ a {
   border-color: var(--nb-green);
   transform: translateY(-1px);
 }
+
+
+/* ─── Mermaid Architecture Diagrams ─── */
+.mermaid {
+  text-align: center;
+  margin: 28px auto;
+  padding: 20px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  overflow-x: auto;
+}
+.mermaid svg {
+  max-width: 100%;
+  height: auto;
+  display: inline-block;
+}
