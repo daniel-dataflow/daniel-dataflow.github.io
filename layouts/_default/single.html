@@ -101,7 +101,7 @@
         <p>{{ .Site.Params.author_bio }}</p>
         <div class="nb-bot-links">
           <a href="{{ .Site.Params.github_url }}" target="_blank"><i class="fa-brands fa-github"></i> GitHub</a>
-          <a href="mailto:{{ .Site.Params.email }}"><i class="fa-regular fa-envelope"></i> Email</a>
+          {{ partial "email_btn.html" (dict "Site" .Site "class" "nb-bot-email-link" "showLabel" true) }}
         </div>
       </div>
     </div>

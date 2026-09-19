@@ -6,8 +6,44 @@
     <p class="nb-footer-powered">
       Powered by <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> &middot; Naver Blog Engine Theme by Daniel
     </p>
+    <p class="nb-footer-notice">
+      본 블로그의 모든 콘텐츠(글·이미지·코드)는 저작권법의 보호를 받습니다.
+      무단 복제·배포·상업적 이용을 금합니다.
+    </p>
   </div>
 </footer>
+
+<!-- ─── 이메일 난독화 해제 스크립트 (Central – email_btn.html 과 연동) ───
+     HTML 소스에는 data-user / data-domain 만 존재하며,
+     클릭 시점에 JS가 mailto: 링크를 조립합니다.
+     스크래퍼·스팸봇은 이메일 주소를 수집할 수 없습니다.
+─────────────────────────────────────────────────────────────────────── -->
+<script>
+(function () {
+  function assembleEmail(el) {
+    var u = el.dataset.user;
+    var d = el.dataset.domain;
+    if (u && d) {
+      el.href = 'mailto:' + u + '@' + d;
+    }
+  }
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('a.nb-email-link').forEach(function (el) {
+      // 호버 시 미리 조립 (접근성 향상)
+      el.addEventListener('mouseenter', function () { assembleEmail(el); });
+      el.addEventListener('focus',      function () { assembleEmail(el); });
+      // 클릭 시 조립 후 바로 이동
+      el.addEventListener('click', function (e) {
+        e.preventDefault();
+        assembleEmail(el);
+        if (el.href && el.href !== '#') {
+          window.location.href = el.href;
+        }
+      });
+    });
+  });
+})();
+</script>
 
 <!-- Mermaid.js for Architecture & Flowchart Diagrams -->
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>

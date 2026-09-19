@@ -1598,6 +1598,41 @@ a {
   margin-top: 2px;
 }
 
+/* ─── 이메일 난독화 & 저작권 보호 관련 스타일 ─── */
+.nb-footer-inner {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.nb-footer-copy,
+.nb-footer-powered {
+  font-size: 0.82rem;
+  color: var(--nb-text-secondary);
+  margin: 0;
+}
+.nb-footer-notice {
+  font-size: 0.74rem;
+  color: var(--nb-text-muted);
+  margin: 6px 0 0;
+  opacity: 0.75;
+  letter-spacing: -0.01em;
+}
+
+/* 글 하단 저자 카드 – 이메일 링크 스타일 */
+.nb-bot-email-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--nb-text-secondary);
+  text-decoration: none;
+  font-size: 0.85rem;
+  transition: color 0.2s;
+}
+.nb-bot-email-link:hover {
+  color: var(--nb-primary);
+}
+
 .nb-footer-right {
   display: flex;
   align-items: center;

@@ -16,9 +16,7 @@
       <a href="{{ .Site.Params.portfolio_url | default .Site.Params.github_url }}" target="_blank" rel="noopener noreferrer" class="nb-btn-primary" title="포트폴리오 바로가기 (새창)">
         <i class="fa-solid fa-briefcase"></i> Portfolio
       </a>
-      <a href="mailto:{{ .Site.Params.email }}" class="nb-btn-sub" title="이메일 문의하기">
-        <i class="fa-regular fa-envelope"></i> Email
-      </a>
+      {{ partial "email_btn.html" (dict "Site" .Site "class" "nb-btn-sub" "showLabel" true) }}
     </div>
     <div class="nb-profile-stats">
       <div class="nb-stat-item">

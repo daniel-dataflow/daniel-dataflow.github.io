@@ -1,0 +1,28 @@
+{{/*
+  email_btn.html – 이메일 난독화 버튼 (중앙 관리용 Partial)
+
+  사용법:
+    사이드바(데스크톱)    : {{ partial "email_btn.html" (dict "Site" .Site "class" "nb-btn-sub" "showLabel" true) }}
+    모바일 상단바         : {{ partial "email_btn.html" (dict "Site" .Site "class" "nb-m-btn-sub" "showLabel" false) }}
+    글 하단 저자 카드     : {{ partial "email_btn.html" (dict "Site" .Site "class" "nb-bot-email-link" "showLabel" true) }}
+
+  HTML 소스에 이메일 주소를 남기지 않고,
+  data-user / data-domain 속성에 분리 저장 후
+  클릭 시점에 JS가 조립합니다.
+  → 스크래퍼·스팸봇이 이메일을 수집할 수 없습니다.
+*/}}
+
+{{ $emailParts := split .Site.Params.email "@" }}
+{{ $user   := index $emailParts 0 }}
+{{ $domain := index $emailParts 1 }}
+{{ $class  := .class  | default "nb-btn-sub" }}
+{{ $label  := .showLabel | default true }}
+
+<a class="{{ $class }} nb-email-link"
+   data-user="{{ $user }}"
+   data-domain="{{ $domain }}"
+   href="#"
+   role="button"
+   title="이메일 문의하기">
+  <i class="fa-regular fa-envelope"></i>{{ if $label }} Email{{ end }}
+</a>
